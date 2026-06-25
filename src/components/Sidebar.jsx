@@ -32,6 +32,12 @@ const ROLE_NAV = {
     { id:"tasks",        icon:"✓",   label:"Tasks" },
     { id:"notes",        icon:"📝",  label:"Notes" },
     { id:"pricing",      icon:"$",   label:"Pricing" },
+    { id:"settings",     icon:"⚙",   label:"Settings" },
+  ],
+  lyric: [
+    { divider:"LYRIC WORKSTATION" },
+    { id:"lyric-workstation", agentId:"lyric" },
+    { id:"settings",     icon:"⚙",   label:"Settings" },
   ],
   user: [
     { id:"dashboard",    icon:"⬡",  label:"Command Center" },
@@ -41,8 +47,8 @@ const ROLE_NAV = {
   ],
 };
 
-const ROLE_COLOR = { admin: C.primary, client: C.amber, user: C.green };
-const ROLE_LABEL = { admin: "Admin", client: "Client", user: "User" };
+const ROLE_COLOR = { admin: C.primary, client: C.amber, user: C.green, lyric: "#39FF14" };
+const ROLE_LABEL = { admin: "Admin", client: "Client", user: "User", lyric: "LYRIC Client" };
 
 export default function Sidebar({ tab, setTab, role, onSignOut }) {
   const nav = ROLE_NAV[role] || ROLE_NAV.user;
