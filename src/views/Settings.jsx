@@ -33,7 +33,7 @@ export default function Settings({ apiKey, setApiKey, role, userEmail, onSignOut
         <h3 style={{ margin:"0 0 6px", fontSize:14, fontWeight:700, color:C.textPrimary }}>Anthropic API Key</h3>
         <p style={{ margin:"0 0 16px", fontSize:12, color:C.textSecondary }}>Required for live AI agent chat and LYRIC content generation.</p>
         <div style={{ display:"flex", gap:10 }}>
-          <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
+          <input type="password" value={apiKey} onChange={e => { setApiKey(e.target.value); localStorage.setItem("aims_api_key", e.target.value); }}
             placeholder="sk-ant-api03-…"
             style={{ flex:1, padding:"10px 14px", borderRadius:8, background:C.surface, border:`1px solid ${apiKey ? C.green : C.border}`, color:C.textPrimary, fontSize:13, outline:"none", fontFamily:"monospace" }} />
           {apiKey && <div style={{ display:"flex", alignItems:"center", gap:6, color:C.green, fontSize:12, fontWeight:700 }}>✓ Key set</div>}

@@ -20,7 +20,7 @@ export default function App() {
   const [session, setSession]           = useState(undefined); // undefined = loading
   const [tab, setTab]                   = useState("dashboard");
   const [role, setRole]                 = useState("user");
-  const [apiKey, setApiKey]             = useState("");
+  const [apiKey, setApiKey]             = useState(() => localStorage.getItem("aims_api_key") || "");
   const [leads]                         = useState(SAMPLE_LEADS);
   const [selectedLead, setSelectedLead] = useState(null);
 
