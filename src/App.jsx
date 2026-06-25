@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { SAMPLE_LEADS } from "./data.js";
+import { useState, useEffect } from "react";
+import { supabase } from "./lib/supabase.js";
+import { SAMPLE_LEADS, C } from "./data.js";
+import Login from "./views/Login.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import Dashboard from "./views/Dashboard.jsx";
 import CRM from "./views/CRM.jsx";
@@ -15,11 +17,41 @@ import Pricing from "./views/Pricing.jsx";
 import Settings from "./views/Settings.jsx";
 
 export default function App() {
-  const [tab, setTab] = useState("dashboard");
-  const [role, setRole] = useState("admin");
-  const [apiKey, setApiKey] = useState("");
-  const [leads] = useState(SAMPLE_LEADS);
+  const [session, setSession]           = useState(undefined); // undefined = loading
+  const [tab, setTab]                   = useState("dashboard");
+  const [role, setRole]                 = useState("user");
+  const [apiKey, setApiKey]             = useState("");
+  const [leads]                         = useState(SAMPLE_LEADS);
   const [selectedLead, setSelectedLead] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      if (s) setRole(s.user.user_metadata?.role || "user");
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      if (s) setRole(s.user.user_metadata?.role || "user");
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setTab("dashboard");
+  };
+
+  if (session === undefined) {
+    return (
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100vh", background:C.bg, color:C.textMuted, fontFamily:"'Inter', sans-serif", fontSize:13 }}>
+        Loading…
+      </div>
+    );
+  }
+
+  if (!session) return <Login />;
 
   const navTo = (newTab) => setTab(newTab);
 
@@ -39,14 +71,14 @@ export default function App() {
       case "tasks":             return <Tasks />;
       case "notes":             return <Notes />;
       case "pricing":           return <Pricing />;
-      case "settings":          return <Settings apiKey={apiKey} setApiKey={setApiKey} role={role} setRole={setRole} />;
+      case "settings":          return <Settings apiKey={apiKey} setApiKey={setApiKey} role={role} userEmail={session.user.email} onSignOut={handleSignOut} />;
       default:                  return <Dashboard leads={leads} setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
     }
   };
 
   return (
     <div style={{ display:"flex", height:"100vh", overflow:"hidden", fontFamily:"'Inter', -apple-system, sans-serif" }}>
-      <Sidebar tab={tab} setTab={navTo} role={role} />
+      <Sidebar tab={tab} setTab={navTo} role={role} onSignOut={handleSignOut} />
       <main style={{ flex:1, overflow:"hidden", background:"#06091A" }}>
         {renderView()}
       </main>

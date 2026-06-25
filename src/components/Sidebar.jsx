@@ -44,8 +44,8 @@ const ROLE_NAV = {
 const ROLE_COLOR = { admin: C.primary, client: C.amber, user: C.green };
 const ROLE_LABEL = { admin: "Admin", client: "Client", user: "User" };
 
-export default function Sidebar({ tab, setTab, role }) {
-  const nav = ROLE_NAV[role] || ROLE_NAV.admin;
+export default function Sidebar({ tab, setTab, role, onSignOut }) {
+  const nav = ROLE_NAV[role] || ROLE_NAV.user;
 
   return (
     <div style={{ width:200, background:C.sidebar, borderRight:`1px solid ${C.border}`, display:"flex", flexDirection:"column", flexShrink:0, overflow:"hidden" }}>
@@ -116,9 +116,17 @@ export default function Sidebar({ tab, setTab, role }) {
         })}
       </nav>
 
-      {/* Footer */}
-      <div style={{ padding:"12px 16px", borderTop:`1px solid ${C.border}`, fontSize:10, color:C.textMuted }}>
-        AIMS Marketing Systems © 2026
+      {/* Footer + Sign Out */}
+      <div style={{ padding:"12px 16px", borderTop:`1px solid ${C.border}` }}>
+        <div
+          onClick={onSignOut}
+          style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 10px", borderRadius:8, cursor:"pointer", marginBottom:8, color:C.textMuted, fontSize:11, fontWeight:600 }}
+          onMouseEnter={e => e.currentTarget.style.background = C.surface}
+          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+        >
+          <span>↪</span> Sign Out
+        </div>
+        <div style={{ fontSize:10, color:C.textMuted }}>AIMS Marketing Systems © 2026</div>
       </div>
     </div>
   );

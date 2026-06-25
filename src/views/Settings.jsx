@@ -1,16 +1,32 @@
 import { C, AGENTS } from "../data.js";
 import { AgentAvatar, Badge } from "../components/utils.jsx";
 
-export default function Settings({ apiKey, setApiKey, role, setRole }) {
-  const ROLES = {
-    admin:  { label:"Admin",  icon:"⚙️", color:C.primary, desc:"Full system access — all views, settings, and data" },
-    client: { label:"Client", icon:"🏢", color:C.amber,   desc:"Campaign & lead visibility — no system settings" },
-    user:   { label:"User",   icon:"👤", color:C.green,   desc:"Basic access — conversations, calendar, tasks" },
-  };
+const ROLE_LABEL = { admin: "Admin", client: "Client", user: "User" };
+const ROLE_COLOR = { admin: C.primary, client: C.amber, user: C.green };
 
+export default function Settings({ apiKey, setApiKey, role, userEmail, onSignOut }) {
   return (
     <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%" }}>
       <h2 style={{ margin:"0 0 24px", fontSize:20, fontWeight:800, color:C.textPrimary }}>Settings</h2>
+
+      {/* Account Info */}
+      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
+        <h3 style={{ margin:"0 0 16px", fontSize:14, fontWeight:700, color:C.textPrimary }}>Account</h3>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div>
+            <div style={{ fontSize:13, fontWeight:600, color:C.textPrimary, marginBottom:6 }}>{userEmail}</div>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"3px 10px", borderRadius:20, background:`${ROLE_COLOR[role]}15`, border:`1px solid ${ROLE_COLOR[role]}30` }}>
+              <span style={{ fontSize:10, fontWeight:800, color:ROLE_COLOR[role], textTransform:"uppercase", letterSpacing:0.5 }}>{ROLE_LABEL[role]}</span>
+            </div>
+          </div>
+          <button
+            onClick={onSignOut}
+            style={{ padding:"8px 18px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:12, fontWeight:600, cursor:"pointer" }}
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
 
       {/* API Key */}
       <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
@@ -23,22 +39,6 @@ export default function Settings({ apiKey, setApiKey, role, setRole }) {
           {apiKey && <div style={{ display:"flex", alignItems:"center", gap:6, color:C.green, fontSize:12, fontWeight:700 }}>✓ Key set</div>}
         </div>
         <p style={{ margin:"10px 0 0", fontSize:11, color:C.textMuted }}>Key is stored in memory only and cleared on refresh. Never shared or logged.</p>
-      </div>
-
-      {/* Role Switcher */}
-      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
-        <h3 style={{ margin:"0 0 6px", fontSize:14, fontWeight:700, color:C.textPrimary }}>Active Role</h3>
-        <p style={{ margin:"0 0 16px", fontSize:12, color:C.textSecondary }}>Switch between roles to preview different access levels.</p>
-        <div style={{ display:"flex", gap:10 }}>
-          {Object.entries(ROLES).map(([key, r]) => (
-            <button key={key} onClick={() => setRole(key)}
-              style={{ flex:1, padding:"14px 12px", borderRadius:10, border:`2px solid ${role===key ? r.color : C.border}`, background:role===key ? `${r.color}15`:"transparent", cursor:"pointer", textAlign:"left" }}>
-              <div style={{ fontSize:20, marginBottom:6 }}>{r.icon}</div>
-              <div style={{ fontSize:13, fontWeight:700, color:role===key ? r.color : C.textPrimary, marginBottom:4 }}>{r.label}</div>
-              <div style={{ fontSize:11, color:C.textSecondary, lineHeight:1.4 }}>{r.desc}</div>
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Agent Info */}
