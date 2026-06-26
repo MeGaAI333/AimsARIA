@@ -1,77 +1,76 @@
 import { useState, useRef, useEffect } from "react";
-import { C, AGENTS, SAMPLE_CONVERSATIONS } from "../data.js";
+import { C, AGENTS } from "../data.js";
 import { AgentAvatar, ChannelBadge } from "../components/utils.jsx";
+import { supabase } from "../lib/supabase.js";
 
-export default function Conversations({ leads, selectedLead, setSelectedLead, apiKey }) {
+function useContacts() {
+  const [contacts, setContacts] = useState([]);
+  useEffect(() => {
+    supabase.from("contacts").select("id, name, company, stage, source, industry").order("created_at", { ascending: false }).limit(50)
+      .then(({ data }) => setContacts(data || []));
+  }, []);
+  return contacts;
+}
+
+export default function Conversations({ selectedLead, setSelectedLead, apiKey }) {
   const [activeAgentId, setActiveAgentId] = useState("aria");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState("live");
   const bottomRef = useRef(null);
   const activeAgent = AGENTS.find(a => a.id === activeAgentId);
+  const contacts = useContacts();
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages]);
 
   useEffect(() => {
-    if (selectedLead && SAMPLE_CONVERSATIONS[selectedLead.id]) {
-      setMessages(SAMPLE_CONVERSATIONS[selectedLead.id]);
-      setViewMode("timeline");
-    } else {
-      setMessages([]);
-      setViewMode("live");
-    }
-  }, [selectedLead]);
+    setMessages([]);
+  }, [selectedLead, activeAgentId]);
 
   const send = async () => {
     if (!input.trim() || loading) return;
     const userMsg = { id:Date.now(), role:"user", agent:null, channel:"text", ts:"Now", content:input };
-    const next = [...messages.filter(m => m.role !== "system"), userMsg];
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setLoading(true);
     try {
-      const history = next.map(m => ({ role: m.role === "user" ? "user" : "assistant", content:m.content }));
+      const history = [...messages.filter(m => m.role !== "system"), userMsg]
+        .map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }));
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method:"POST",
         headers: { "Content-Type":"application/json", "x-api-key": apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
         body: JSON.stringify({
           model:"claude-sonnet-4-6", max_tokens:1000,
-          system: activeAgent.systemPrompt + (selectedLead ? `\n\nLead context: ${selectedLead.name}, ${selectedLead.company}, ${selectedLead.industry}. Stage: ${selectedLead.stage}. Score: ${selectedLead.score}. Source: ${selectedLead.source}.` : ""),
+          system: activeAgent.systemPrompt + (selectedLead ? `\n\nContact context: ${selectedLead.name}, ${selectedLead.company || ""}, ${selectedLead.industry || ""}. Stage: ${selectedLead.stage}. Source: ${selectedLead.source || ""}.` : ""),
           messages: history,
         }),
       });
       const data = await res.json();
       const text = data.content?.[0]?.text || (data.error ? `⚠️ API Error: ${data.error.message}` : "Unable to respond.");
       setMessages(prev => [...prev, { id:Date.now()+1, role:"ai", agent:activeAgentId, channel:activeAgent.channels[0], ts:"Now", content:text }]);
-    } catch (e) {
+    } catch {
       setMessages(prev => [...prev, { id:Date.now()+1, role:"ai", agent:activeAgentId, channel:"text", ts:"Now", content:"⚠️ Connection error. Check API key in Settings." }]);
     }
     setLoading(false);
   };
 
-  const displayed = viewMode === "timeline" ? messages : messages.filter(m => m.role !== "system");
-
   return (
     <div style={{ display:"flex", height:"100%", overflow:"hidden" }}>
-      {/* Lead List */}
+      {/* Contact List */}
       <div style={{ width:210, background:C.sidebar, borderRight:`1px solid ${C.border}`, overflowY:"auto", flexShrink:0 }}>
-        <div style={{ padding:"14px 14px 6px", fontSize:10, fontWeight:800, color:C.textMuted, textTransform:"uppercase", letterSpacing:1 }}>Leads</div>
-        {leads.map(lead => {
-          const a = AGENTS.find(ag => ag.id === lead.assignedTo);
-          const hasConv = !!SAMPLE_CONVERSATIONS[lead.id];
+        <div style={{ padding:"14px 14px 6px", fontSize:10, fontWeight:800, color:C.textMuted, textTransform:"uppercase", letterSpacing:1 }}>Contacts</div>
+        {contacts.length === 0 && (
+          <div style={{ padding:"20px 14px", fontSize:11, color:C.textMuted, textAlign:"center" }}>No contacts yet</div>
+        )}
+        {contacts.map(contact => {
+          const stageColors = { cold:C.textMuted, contacted:C.primary, qualified:C.green, negotiating:C.amber, won:C.green, lost:C.red };
+          const color = stageColors[contact.stage] || C.textMuted;
           return (
-            <div key={lead.id} onClick={() => setSelectedLead(lead)}
-              style={{ padding:"9px 14px", cursor:"pointer", background:selectedLead?.id===lead.id ? C.surface:"transparent", borderLeft:`3px solid ${selectedLead?.id===lead.id ? a?.color:"transparent"}`, transition:"all .15s" }}>
-              <div style={{ display:"flex", justifyContent:"space-between" }}>
-                <div style={{ fontSize:12, fontWeight:600, color:C.textPrimary }}>{lead.name}</div>
-                {hasConv && <span style={{ fontSize:9, color:a?.color, fontWeight:700 }}>●</span>}
-              </div>
-              <div style={{ fontSize:10, color:C.textSecondary }}>{lead.company}</div>
-              <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:4 }}>
-                <AgentAvatar agentId={lead.assignedTo} size={13} />
-                <span style={{ fontSize:9, color:a?.color, fontWeight:700 }}>{a?.name}</span>
-              </div>
+            <div key={contact.id} onClick={() => setSelectedLead(contact)}
+              style={{ padding:"9px 14px", cursor:"pointer", background:selectedLead?.id===contact.id ? C.surface:"transparent", borderLeft:`3px solid ${selectedLead?.id===contact.id ? C.primary:"transparent"}`, transition:"all .15s" }}>
+              <div style={{ fontSize:12, fontWeight:600, color:C.textPrimary }}>{contact.name}</div>
+              <div style={{ fontSize:10, color:C.textSecondary }}>{contact.company || contact.industry || "—"}</div>
+              <div style={{ fontSize:9, color, fontWeight:700, textTransform:"uppercase", marginTop:3 }}>{contact.stage}</div>
             </div>
           );
         })}
@@ -84,25 +83,14 @@ export default function Conversations({ leads, selectedLead, setSelectedLead, ap
       <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
         {/* Chat Header */}
         <div style={{ padding:"14px 22px", borderBottom:`1px solid ${C.border}`, background:C.surface, flexShrink:0 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-            <div>
-              {selectedLead ? (
-                <>
-                  <div style={{ fontSize:15, fontWeight:700, color:C.textPrimary }}>{selectedLead.name} <span style={{ fontSize:12, fontWeight:400, color:C.textSecondary }}>— {selectedLead.company}</span></div>
-                  <div style={{ fontSize:11, color:C.textSecondary, marginTop:2 }}>Stage: {selectedLead.stage} · Score: {selectedLead.score} · {selectedLead.source}</div>
-                </>
-              ) : (
-                <div style={{ fontSize:15, fontWeight:700, color:C.textPrimary }}>Live Agent Chat</div>
-              )}
-            </div>
-            {selectedLead && (
-              <div style={{ display:"flex", gap:5 }}>
-                {["timeline","live"].map(m => (
-                  <button key={m} onClick={() => setViewMode(m)} style={{ padding:"4px 10px", borderRadius:5, border:`1px solid ${C.border}`, background:viewMode===m ? C.primary:"transparent", color:viewMode===m ? "#fff":C.textSecondary, fontSize:11, cursor:"pointer", fontWeight:600 }}>
-                    {m === "timeline" ? "Handoff Timeline" : "Live Chat"}
-                  </button>
-                ))}
-              </div>
+          <div style={{ marginBottom:10 }}>
+            {selectedLead ? (
+              <>
+                <div style={{ fontSize:15, fontWeight:700, color:C.textPrimary }}>{selectedLead.name} <span style={{ fontSize:12, fontWeight:400, color:C.textSecondary }}>— {selectedLead.company || selectedLead.industry || ""}</span></div>
+                <div style={{ fontSize:11, color:C.textSecondary, marginTop:2 }}>Stage: {selectedLead.stage}{selectedLead.source ? ` · ${selectedLead.source}` : ""}</div>
+              </>
+            ) : (
+              <div style={{ fontSize:15, fontWeight:700, color:C.textPrimary }}>Live Agent Chat</div>
             )}
           </div>
           {/* Agent selector */}
@@ -118,7 +106,7 @@ export default function Conversations({ leads, selectedLead, setSelectedLead, ap
 
         {/* Messages */}
         <div style={{ flex:1, overflowY:"auto", padding:"18px 22px", display:"flex", flexDirection:"column", gap:2 }}>
-          {displayed.length === 0 && (
+          {messages.length === 0 && (
             <div style={{ textAlign:"center", color:C.textMuted, marginTop:60 }}>
               <div style={{ fontSize:40, marginBottom:10 }}>{activeAgent.avatar}</div>
               <div style={{ fontSize:14, color:C.textSecondary, fontWeight:600 }}>{activeAgent.name} is ready</div>
@@ -126,14 +114,7 @@ export default function Conversations({ leads, selectedLead, setSelectedLead, ap
               {!apiKey && <div style={{ fontSize:11, color:C.amber, marginTop:16, padding:"8px 14px", background:`${C.amber}15`, border:`1px solid ${C.amber}30`, borderRadius:8, display:"inline-block" }}>⚠️ Add your API key in Settings to activate live chat</div>}
             </div>
           )}
-          {displayed.map(msg => {
-            if (msg.role === "system") return (
-              <div key={msg.id} style={{ display:"flex", alignItems:"center", gap:10, margin:"10px 0" }}>
-                <div style={{ flex:1, height:1, background:C.border }} />
-                <div style={{ padding:"5px 14px", borderRadius:20, fontSize:11, background:C.amberDim, border:`1px solid ${C.amber}40`, color:C.amber, whiteSpace:"nowrap", maxWidth:"75%", textAlign:"center" }}>{msg.content}</div>
-                <div style={{ flex:1, height:1, background:C.border }} />
-              </div>
-            );
+          {messages.map(msg => {
             const a = msg.agent ? AGENTS.find(ag => ag.id === msg.agent) : null;
             const isUser = msg.role === "user";
             return (

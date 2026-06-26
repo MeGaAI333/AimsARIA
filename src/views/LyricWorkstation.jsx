@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { C, AGENTS, SAMPLE_CONTENT } from "../data.js";
+import { C, AGENTS } from "../data.js";
 import { AgentAvatar, Badge } from "../components/utils.jsx";
 import { getProfile } from "../lib/db.js";
 
@@ -40,8 +40,6 @@ function extractImagePrompt(text, industry, tone) {
 
 const platIcon = { "All Platforms":"🌐", Facebook:"📘", Instagram:"📸", LinkedIn:"💼" };
 const typeIcon = { Post:"📝", "Reel Script":"🎬", Carousel:"🎠", Email:"📧", Newsletter:"📰", "Blog Post":"✍️" };
-const contentStatusColor = { published: C.green, scheduled: C.amber, draft: C.textMuted };
-
 export default function LyricWorkstation({ apiKey, orgId }) {
   const [tab, setTab]               = useState("create");
   const [platform, setPlatform]     = useState("All Platforms");
@@ -289,35 +287,12 @@ export default function LyricWorkstation({ apiKey, orgId }) {
         )}
 
         {tab === "published" && (
-          <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%" }}>
-            <h3 style={{ margin:"0 0 20px", fontSize:16, fontWeight:700, color:C.textPrimary }}>Published Content Library</h3>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:14 }}>
-              {SAMPLE_CONTENT.map(c => {
-                const platColor = { linkedin:C.primary, instagram:"#FF0080", email:C.amber, facebook:C.primary, website:C.green };
-                const pc = platColor[c.platform] || C.textSecondary;
-                return (
-                  <div key={c.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:18 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
-                      <span style={{ fontSize:10, fontWeight:800, color:pc, textTransform:"uppercase" }}>{c.platform}</span>
-                      <span style={{ fontSize:10, fontWeight:700, color:contentStatusColor[c.status], textTransform:"capitalize" }}>● {c.status}</span>
-                    </div>
-                    <div style={{ fontSize:13, fontWeight:700, color:C.textPrimary, lineHeight:1.4, marginBottom:8 }}>{c.title}</div>
-                    <div style={{ display:"flex", gap:6, marginBottom:10 }}>
-                      <span style={{ fontSize:10, padding:"2px 7px", borderRadius:4, background:`${C.primary}15`, color:C.primary, fontWeight:700, textTransform:"capitalize" }}>{c.type}</span>
-                    </div>
-                    {c.status === "published" && (
-                      <div style={{ display:"flex", gap:14, borderTop:`1px solid ${C.border}`, paddingTop:10 }}>
-                        <div><div style={{ fontSize:12, fontWeight:700, color:GREEN }}>{c.engagement}</div><div style={{ fontSize:10, color:C.textMuted }}>Engage</div></div>
-                        {c.likes > 0 && <div><div style={{ fontSize:12, fontWeight:700, color:C.textPrimary }}>{c.likes}</div><div style={{ fontSize:10, color:C.textMuted }}>Likes</div></div>}
-                        {c.comments > 0 && <div><div style={{ fontSize:12, fontWeight:700, color:C.textPrimary }}>{c.comments}</div><div style={{ fontSize:10, color:C.textMuted }}>Comments</div></div>}
-                        <div style={{ marginLeft:"auto", fontSize:11, color:C.textMuted }}>{c.published}</div>
-                      </div>
-                    )}
-                    {c.status !== "published" && <div style={{ fontSize:11, color:C.textMuted }}>Scheduled: {c.published || "Draft"}</div>}
-                  </div>
-                );
-              })}
-            </div>
+          <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ fontSize:48, marginBottom:16 }}>📡</div>
+            <h3 style={{ margin:"0 0 10px", fontSize:18, fontWeight:700, color:C.textPrimary }}>No Published Content Yet</h3>
+            <p style={{ color:C.textSecondary, fontSize:13, textAlign:"center", maxWidth:380, lineHeight:1.6, margin:0 }}>
+              Content you generate and schedule will appear here once published. Use the Create tab to get started.
+            </p>
           </div>
         )}
 

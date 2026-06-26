@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./lib/supabase.js";
-import { SAMPLE_LEADS, C } from "./data.js";
+import { C } from "./data.js";
 import Login from "./views/Login.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import Dashboard from "./views/Dashboard.jsx";
@@ -24,7 +24,6 @@ export default function App() {
   const [role, setRole]                 = useState("user");
   const [orgId, setOrgId]               = useState("");
   const [apiKey, setApiKey]             = useState(() => localStorage.getItem("aims_api_key") || "");
-  const [leads]                         = useState(SAMPLE_LEADS);
   const [selectedLead, setSelectedLead] = useState(null);
 
   useEffect(() => {
@@ -66,15 +65,15 @@ export default function App() {
 
   const renderView = () => {
     switch (tab) {
-      case "dashboard":         return <Dashboard leads={leads} setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
+      case "dashboard":         return <Dashboard setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
       case "crm":               return <CRM setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
-      case "pipeline":          return <Pipeline leads={leads} setSelectedLead={setSelectedLead} setActiveTab={navTo} />;
-      case "conversations":     return <Conversations leads={leads} selectedLead={selectedLead} setSelectedLead={setSelectedLead} apiKey={apiKey} />;
+      case "pipeline":          return <Pipeline setSelectedLead={setSelectedLead} setActiveTab={navTo} />;
+      case "conversations":     return <Conversations selectedLead={selectedLead} setSelectedLead={setSelectedLead} apiKey={apiKey} />;
       case "campaigns":         return <Campaigns />;
-      case "agent-aria":        return <AgentPage agentId="aria"   apiKey={apiKey} setActiveTab={navTo} />;
-      case "agent-melody":      return <AgentPage agentId="melody" apiKey={apiKey} setActiveTab={navTo} />;
-      case "agent-lyric":       return <AgentPage agentId="lyric"  apiKey={apiKey} setActiveTab={navTo} />;
-      case "agent-muse":        return <AgentPage agentId="muse"   apiKey={apiKey} setActiveTab={navTo} />;
+      case "agent-aria":        return <AgentPage agentId="aria"   apiKey={apiKey} setActiveTab={navTo} orgId={orgId} role={role} />;
+      case "agent-melody":      return <AgentPage agentId="melody" apiKey={apiKey} setActiveTab={navTo} orgId={orgId} role={role} />;
+      case "agent-lyric":       return <AgentPage agentId="lyric"  apiKey={apiKey} setActiveTab={navTo} orgId={orgId} role={role} />;
+      case "agent-muse":        return <AgentPage agentId="muse"   apiKey={apiKey} setActiveTab={navTo} orgId={orgId} role={role} />;
       case "lyric-workstation": return <LyricWorkstation apiKey={apiKey} orgId={orgId} />;
       case "client-profile":    return <ClientProfile role={role} orgId={orgId} />;
       case "onboarding":        return <Onboarding role={role} orgId={orgId} />;

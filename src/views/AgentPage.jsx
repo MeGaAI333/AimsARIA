@@ -1,6 +1,80 @@
 import { useState, useRef, useEffect } from "react";
-import { C, AGENTS, SAMPLE_CAMPAIGNS } from "../data.js";
+import { C, AGENTS } from "../data.js";
 import { AgentAvatar, Badge, ChannelBadge, PulsingDot } from "../components/utils.jsx";
+import { supabase } from "../lib/supabase.js";
+
+function useOrgStats() {
+  const [stats, setStats] = useState(null);
+  useEffect(() => {
+    async function load() {
+      const [
+        { data: contacts },
+        { data: tasks },
+        { data: notes },
+        { data: events },
+      ] = await Promise.all([
+        supabase.from("contacts").select("stage, source, value"),
+        supabase.from("tasks").select("done, status"),
+        supabase.from("notes").select("id"),
+        supabase.from("events").select("id"),
+      ]);
+      const c = contacts || [];
+      const t = tasks || [];
+      const byStage = s => c.filter(x => x.stage === s).length;
+      const wonCount  = byStage("won");
+      const lostCount = byStage("lost");
+      const wonDeals  = c.filter(x => x.stage === "won" && x.value);
+      setStats({
+        totalContacts: c.length,
+        cold:          byStage("cold"),
+        contacted:     byStage("contacted"),
+        qualified:     byStage("qualified"),
+        negotiating:   byStage("negotiating"),
+        won:           wonCount,
+        lost:          lostCount,
+        closeRate:     (wonCount + lostCount) > 0 ? Math.round(wonCount / (wonCount + lostCount) * 100) + "%" : "—",
+        avgDealSize:   wonDeals.length > 0 ? "$" + Math.round(wonDeals.reduce((s, x) => s + x.value, 0) / wonDeals.length).toLocaleString() : "—",
+        tasksDone:     t.filter(x => x.done || x.status === "completed").length,
+        tasksPending:  t.filter(x => !x.done && x.status !== "completed").length,
+        notesCount:    (notes || []).length,
+        eventsCount:   (events || []).length,
+      });
+    }
+    load();
+  }, []);
+  return stats;
+}
+
+function agentKpis(agentId, stats) {
+  if (!stats) return null;
+  switch (agentId) {
+    case "aria":   return [
+      { label: "Total Contacts",  val: stats.totalContacts },
+      { label: "Cold Leads",      val: stats.cold },
+      { label: "Contacted",       val: stats.contacted },
+      { label: "Qualified",       val: stats.qualified },
+    ];
+    case "melody": return [
+      { label: "Negotiating",     val: stats.negotiating },
+      { label: "Won",             val: stats.won },
+      { label: "Close Rate",      val: stats.closeRate },
+      { label: "Avg Deal Size",   val: stats.avgDealSize },
+    ];
+    case "lyric":  return [
+      { label: "Total Contacts",  val: stats.totalContacts },
+      { label: "Notes Created",   val: stats.notesCount },
+      { label: "Tasks Done",      val: stats.tasksDone },
+      { label: "Tasks Pending",   val: stats.tasksPending },
+    ];
+    case "muse":   return [
+      { label: "Total Contacts",  val: stats.totalContacts },
+      { label: "Qualified",       val: stats.qualified },
+      { label: "Won",             val: stats.won },
+      { label: "Upcoming Events", val: stats.eventsCount },
+    ];
+    default: return [];
+  }
+}
 
 function LiveChat({ agent, apiKey }) {
   const [msgs, setMsgs] = useState([]);
@@ -72,12 +146,12 @@ function LiveChat({ agent, apiKey }) {
   );
 }
 
-export default function AgentPage({ agentId, apiKey, setActiveTab }) {
+export default function AgentPage({ agentId, apiKey, setActiveTab, orgId, role }) {
   const agent = AGENTS.find(a => a.id === agentId);
+  const stats = useOrgStats();
   if (!agent) return <div style={{ padding:40, color:C.textMuted }}>Agent not found.</div>;
 
-  const campaigns = SAMPLE_CAMPAIGNS.filter(c => c.agent === agentId);
-  const kpiEntries = Object.entries(agent.kpis);
+  const kpis = agentKpis(agentId, stats);
 
   return (
     <div style={{ overflowY:"auto", height:"100%", padding:"28px 32px" }}>
@@ -146,36 +220,25 @@ export default function AgentPage({ agentId, apiKey, setActiveTab }) {
 
         {/* Right: KPIs + Campaigns + Chat */}
         <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-          {/* KPIs */}
+          {/* KPIs — live from Supabase, org-specific */}
           <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20 }}>
-            <h3 style={{ margin:"0 0 14px", fontSize:14, fontWeight:700, color:C.textPrimary }}>Performance — 30d</h3>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-              {kpiEntries.map(([key, val]) => (
-                <div key={key} style={{ padding:"12px 14px", borderRadius:8, background:C.surface, border:`1px solid ${agent.color}25`, textAlign:"center" }}>
-                  <div style={{ fontSize:20, fontWeight:800, color:agent.color }}>{val}</div>
-                  <div style={{ fontSize:10, color:C.textMuted, marginTop:4, textTransform:"capitalize" }}>{key.replace(/([A-Z])/g, " $1").trim()}</div>
-                </div>
-              ))}
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+              <h3 style={{ margin:0, fontSize:14, fontWeight:700, color:C.textPrimary }}>Live Activity</h3>
+              <span style={{ fontSize:10, color:C.textMuted }}>Your data only</span>
             </div>
-          </div>
-
-          {/* Campaigns */}
-          {campaigns.length > 0 && (
-            <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20 }}>
-              <h3 style={{ margin:"0 0 12px", fontSize:14, fontWeight:700, color:C.textPrimary }}>Active Campaigns</h3>
-              {campaigns.map(c => (
-                <div key={c.id} onClick={() => setActiveTab("campaigns")} style={{ padding:"10px 12px", borderRadius:8, background:C.surface, border:`1px solid ${agent.color}25`, marginBottom:8, cursor:"pointer" }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary, marginBottom:4 }}>{c.name}</div>
-                  <div style={{ fontSize:11, color:C.textSecondary, marginBottom:6 }}>{c.description}</div>
-                  <div style={{ display:"flex", gap:8 }}>
-                    <Badge color={C.green}>● Active</Badge>
-                    <span style={{ fontSize:10, color:C.textMuted }}>{c.leads > 0 ? `${c.leads} leads` : "Always-on"}</span>
-                    <span style={{ fontSize:10, color:agent.color, fontWeight:700 }}>{c.engagement} engagement</span>
+            {!kpis ? (
+              <div style={{ textAlign:"center", padding:"20px 0", color:C.textMuted, fontSize:12 }}>Loading…</div>
+            ) : (
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                {kpis.map(({ label, val }) => (
+                  <div key={label} style={{ padding:"12px 14px", borderRadius:8, background:C.surface, border:`1px solid ${agent.color}25`, textAlign:"center" }}>
+                    <div style={{ fontSize:22, fontWeight:800, color:agent.color }}>{val}</div>
+                    <div style={{ fontSize:10, color:C.textMuted, marginTop:4 }}>{label}</div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Live Chat */}
           <LiveChat agent={agent} apiKey={apiKey} />
