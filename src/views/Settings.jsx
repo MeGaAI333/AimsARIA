@@ -98,6 +98,16 @@ function InvitePanel() {
 }
 
 export default function Settings({ apiKey, setApiKey, role, userEmail, onSignOut }) {
+  const [keyDraft, setKeyDraft] = useState(apiKey);
+  const [keySaved, setKeySaved] = useState(false);
+
+  const saveKey = () => {
+    setApiKey(keyDraft);
+    localStorage.setItem("aims_api_key", keyDraft);
+    setKeySaved(true);
+    setTimeout(() => setKeySaved(false), 3000);
+  };
+
   return (
     <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%" }}>
       <h2 style={{ margin:"0 0 24px", fontSize:20, fontWeight:800, color:C.textPrimary }}>Settings</h2>
@@ -127,12 +137,17 @@ export default function Settings({ apiKey, setApiKey, role, userEmail, onSignOut
         <h3 style={{ margin:"0 0 6px", fontSize:14, fontWeight:700, color:C.textPrimary }}>Anthropic API Key</h3>
         <p style={{ margin:"0 0 16px", fontSize:12, color:C.textSecondary }}>Required for live AI agent chat and LYRIC content generation.</p>
         <div style={{ display:"flex", gap:10 }}>
-          <input type="password" value={apiKey} onChange={e => { setApiKey(e.target.value); localStorage.setItem("aims_api_key", e.target.value); }}
+          <input type="password" value={keyDraft} onChange={e => setKeyDraft(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && saveKey()}
             placeholder="sk-ant-api03-…"
-            style={{ flex:1, padding:"10px 14px", borderRadius:8, background:C.surface, border:`1px solid ${apiKey ? C.green : C.border}`, color:C.textPrimary, fontSize:13, outline:"none", fontFamily:"monospace" }} />
-          {apiKey && <div style={{ display:"flex", alignItems:"center", gap:6, color:C.green, fontSize:12, fontWeight:700 }}>✓ Key set</div>}
+            style={{ flex:1, padding:"10px 14px", borderRadius:8, background:C.surface, border:`1px solid ${keyDraft ? C.green : C.border}`, color:C.textPrimary, fontSize:13, outline:"none", fontFamily:"monospace" }} />
+          <button onClick={saveKey} disabled={!keyDraft.trim()}
+            style={{ padding:"10px 20px", borderRadius:8, border:"none", background:keySaved ? C.green : (!keyDraft.trim() ? C.border : C.primary), color:"#fff", fontSize:13, fontWeight:700, cursor:!keyDraft.trim()?"not-allowed":"pointer", flexShrink:0, transition:"background .2s" }}>
+            {keySaved ? "✓ Saved!" : "Save Key"}
+          </button>
         </div>
-        <p style={{ margin:"10px 0 0", fontSize:11, color:C.textMuted }}>Stored in your browser only. Never shared or logged.</p>
+        {apiKey && !keySaved && <div style={{ fontSize:11, color:C.green, fontWeight:700, marginTop:8 }}>✓ API key is active</div>}
+        <p style={{ margin:"8px 0 0", fontSize:11, color:C.textMuted }}>Stored in your browser only. Never shared or logged. Press Enter or click Save Key.</p>
       </div>
 
       {/* Agent Info — admin only */}
