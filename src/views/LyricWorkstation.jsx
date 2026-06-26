@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { C, AGENTS, SAMPLE_CONTENT } from "../data.js";
 import { AgentAvatar, Badge } from "../components/utils.jsx";
+import { getProfile } from "../lib/db.js";
 
 const LYRIC = AGENTS.find(a => a.id === "lyric");
 const GREEN = "#39FF14";
@@ -10,9 +11,10 @@ const CONTENT_TYPES = ["Post","Reel Script","Carousel","Email","Newsletter","Blo
 const TONES = ["Authoritative","Educational","Conversational","Urgency-Driven"];
 const INDUSTRIES = ["Roofing","Law Firm","Financial Services","Real Estate","MedSpa","HVAC","Plumbing","CPA/Tax","Pest Control","Landscaping","Fence & Gate","Other"];
 
-function buildPrompt({ platform, contentType, industry, topic, tone }) {
+function buildPrompt({ platform, contentType, industry, topic, tone, profile }) {
   const platformStr = platform === "All Platforms" ? "Facebook, Instagram, and LinkedIn" : platform;
-  const base = `You are LYRIC — AIMS AI's Content & Brand Voice agent. Write in LYRIC's voice: authoritative but never corporate, industry-fluent, and every piece ends with a clear CTA.\n\nIndustry: ${industry}\nGoal/Topic: ${topic}\nTone: ${tone}\nPlatform: ${platformStr}\n\n`;
+  const profileCtx = profile ? `\n\nCLIENT PROFILE:\nBusiness: ${profile.business_name||""}\nService Area: ${profile.service_area||""}\nTarget Audience: ${profile.target_audience||""}\nContent Pillars: ${profile.content_pillars||""}\nBrand Tone: ${profile.brand_tone||""}\nContent Restrictions: ${profile.restrictions||""}\nRequired Hashtags: ${profile.hashtags||""}\nKey Pain Points: ${profile.pain_points||""}` : "";
+  const base = `You are LYRIC — AIMS AI's Content & Brand Voice agent. Write in LYRIC's voice: authoritative but never corporate, industry-fluent, and every piece ends with a clear CTA.\n\nIndustry: ${industry}\nGoal/Topic: ${topic}\nTone: ${tone}\nPlatform: ${platformStr}${profileCtx}\n\n`;
   const imgNote = `\n\n[IMAGE PROMPT]: Write a single sentence describing a professional marketing visual to accompany this content. Be specific about the scene, style, and mood.`;
 
   if (contentType === "Post") return base + `Write a single social media post for ${platformStr}. Include: a bold hook sentence, 2-3 value points, a strong CTA, and 3-5 relevant hashtags. Keep it under 280 words.` + imgNote;
@@ -40,7 +42,7 @@ const platIcon = { "All Platforms":"🌐", Facebook:"📘", Instagram:"📸", Li
 const typeIcon = { Post:"📝", "Reel Script":"🎬", Carousel:"🎠", Email:"📧", Newsletter:"📰", "Blog Post":"✍️" };
 const contentStatusColor = { published: C.green, scheduled: C.amber, draft: C.textMuted };
 
-export default function LyricWorkstation({ apiKey }) {
+export default function LyricWorkstation({ apiKey, orgId }) {
   const [tab, setTab]               = useState("create");
   const [platform, setPlatform]     = useState("All Platforms");
   const [contentType, setContentType] = useState("Post");
@@ -52,6 +54,23 @@ export default function LyricWorkstation({ apiKey }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loading, setLoading]       = useState(false);
   const [copied, setCopied]         = useState(false);
+  const [profile, setProfile]       = useState(null);
+
+  useEffect(() => {
+    if (!orgId) return;
+    getProfile(orgId).then(p => {
+      if (!p) return;
+      setProfile(p);
+      if (p.industry) {
+        const match = INDUSTRIES.find(i => i.toLowerCase() === p.industry.toLowerCase());
+        setIndustry(match || "Other");
+      }
+      if (p.brand_tone) {
+        const toneMap = { "Professional":"Authoritative", "Friendly & Casual":"Conversational", "Urgent / Sales-Focused":"Urgency-Driven", "Educational":"Educational" };
+        setTone(toneMap[p.brand_tone] || "Authoritative");
+      }
+    }).catch(() => {});
+  }, [orgId]);
 
   const generate = async () => {
     if (!topic.trim()) return;
@@ -64,7 +83,7 @@ export default function LyricWorkstation({ apiKey }) {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method:"POST",
         headers:{ "Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true" },
-        body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1500, system:LYRIC.systemPrompt, messages:[{ role:"user", content:buildPrompt({ platform, contentType, industry, topic, tone }) }] }),
+        body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1500, system:LYRIC.systemPrompt, messages:[{ role:"user", content:buildPrompt({ platform, contentType, industry, topic, tone, profile }) }] }),
       });
       const data = await res.json();
       const text = data.content?.[0]?.text || (data.error ? `⚠️ ${data.error.message}` : "Error generating content.");
@@ -96,6 +115,7 @@ export default function LyricWorkstation({ apiKey }) {
           <div style={{ marginLeft:"auto", display:"flex", gap:6 }}>
             <Badge color={GREEN}>🎵 LYRIC</Badge>
             <Badge color={C.green}>● Active</Badge>
+            {profile && <Badge color={C.primary}>📋 {profile.business_name||"Profile"} loaded</Badge>}
           </div>
         </div>
         <div style={{ display:"flex", gap:0 }}>

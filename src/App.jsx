@@ -15,11 +15,13 @@ import Tasks from "./views/Tasks.jsx";
 import Notes from "./views/Notes.jsx";
 import Pricing from "./views/Pricing.jsx";
 import Settings from "./views/Settings.jsx";
+import ClientProfile from "./views/ClientProfile.jsx";
 
 export default function App() {
   const [session, setSession]           = useState(undefined); // undefined = loading
   const [tab, setTab]                   = useState("dashboard");
   const [role, setRole]                 = useState("user");
+  const [orgId, setOrgId]               = useState("");
   const [apiKey, setApiKey]             = useState(() => localStorage.getItem("aims_api_key") || "");
   const [leads]                         = useState(SAMPLE_LEADS);
   const [selectedLead, setSelectedLead] = useState(null);
@@ -27,12 +29,18 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
-      if (s) setRole(s.user.user_metadata?.role || "user");
+      if (s) {
+        setRole(s.user.user_metadata?.role || "user");
+        setOrgId(s.user.user_metadata?.org_id || "");
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
-      if (s) setRole(s.user.user_metadata?.role || "user");
+      if (s) {
+        setRole(s.user.user_metadata?.role || "user");
+        setOrgId(s.user.user_metadata?.org_id || "");
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -66,7 +74,8 @@ export default function App() {
       case "agent-melody":      return <AgentPage agentId="melody" apiKey={apiKey} setActiveTab={navTo} />;
       case "agent-lyric":       return <AgentPage agentId="lyric"  apiKey={apiKey} setActiveTab={navTo} />;
       case "agent-muse":        return <AgentPage agentId="muse"   apiKey={apiKey} setActiveTab={navTo} />;
-      case "lyric-workstation": return <LyricWorkstation apiKey={apiKey} />;
+      case "lyric-workstation": return <LyricWorkstation apiKey={apiKey} orgId={orgId} />;
+      case "client-profile":    return <ClientProfile role={role} orgId={orgId} />;
       case "calendar":          return <CalendarView />;
       case "tasks":             return <Tasks />;
       case "notes":             return <Notes />;

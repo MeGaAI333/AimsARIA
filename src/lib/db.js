@@ -84,3 +84,22 @@ export async function deleteEvent(id) {
   const { error } = await supabase.from("events").delete().eq("id", id);
   if (error) throw error;
 }
+
+// ── CLIENT PROFILES ───────────────────────────────────────────────────────────
+export async function getProfile(orgId) {
+  const { data, error } = await supabase.from("client_profiles").select("*").eq("org_id", orgId).single();
+  if (error && error.code !== "PGRST116") throw error;
+  return data || null;
+}
+export async function getAllProfiles() {
+  const { data, error } = await supabase.from("client_profiles").select("*").order("updated_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+export async function saveProfile(orgId, profile) {
+  const { data, error } = await supabase.from("client_profiles")
+    .upsert({ ...profile, org_id: orgId, updated_at: new Date().toISOString() }, { onConflict: "org_id" })
+    .select().single();
+  if (error) throw error;
+  return data;
+}
