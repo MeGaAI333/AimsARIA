@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIMS AI Command Center — User Manual</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background: #f9fafb;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 60px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #0066cc;
+            border-bottom: 3px solid #0066cc;
+            padding-bottom: 15px;
+        }
+
+        h2 {
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            color: #0066cc;
+            padding-top: 20px;
+        }
+
+        h3 {
+            font-size: 1.3em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        h4 {
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            color: #555;
+            font-weight: 700;
+        }
+
+        p {
+            margin-bottom: 12px;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .metadata {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f0f4f8;
+            border-left: 4px solid #0066cc;
+            border-radius: 4px;
+        }
+
+        .section-intro {
+            background: #f0f4f8;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #0066cc;
+        }
+
+        .role-card {
+            background: #fafbfc;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #0066cc;
+        }
+
+        .role-card h3 {
+            margin-top: 0;
+            color: #0066cc;
+        }
+
+        strong {
+            color: #0066cc;
+            font-weight: 700;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+        }
+
+        .workflow {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .workflow h4 {
+            margin-top: 0;
+            color: #0066cc;
+        }
+
+        .tip {
+            background: #f0f9ff;
+            border-left: 4px solid #0099ff;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .warning {
+            background: #fef3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th {
+            background: #0066cc;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        .page-break {
+            page-break-after: always;
+            margin: 40px 0;
+        }
+
+        .toc {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 30px 0;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+        }
+
+        .toc ul {
+            columns: 2;
+            column-gap: 30px;
+        }
+
+        .toc li {
+            margin-bottom: 6px;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 40px;
+                max-width: 100%;
+            }
+            h2 {
+                page-break-before: avoid;
+                page-break-after: avoid;
+            }
+            h3 {
+                page-break-after: avoid;
+            }
+            p {
+                page-break-inside: avoid;
+            }
+            ul, ol {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AIMS AI Command Center — User Manual</h1>
+
+        <div class="metadata">
+            <strong>Overview:</strong> A unified platform for managing client relationships, AI-driven outreach, and content generation.<br>
+            <strong>Current Build:</strong> June 2026 | <strong>Version:</strong> Command Center v2.0<br>
+            <strong>Platform:</strong> React 18 + Vite + Supabase | <strong>API:</strong> Anthropic Claude Sonnet 4.6 (server-side)
+        </div>
+
+        <!-- Overview -->
+        <h2>Overview</h2>
+        <p>AIMS AI Command Center is a unified platform for managing client relationships, AI-driven outreach, and content generation. Four specialized AI agents (ARIA, MELODY, LYRIC, MUSE) work together to automate sales recovery, closing, content creation, and reputation management.</p>
+
+        <!-- User Roles -->
+        <h2>User Roles & Permissions</h2>
+
+        <div class="role-card">
+            <h3>👤 Admin</h3>
+            <p><strong>Full system access.</strong> Manages team, configuration, and all client data.</p>
+            <h4>Can do:</h4>
+            <ul>
+                <li>View all contacts and conversations across all clients</li>
+                <li>Manage team members (invite, assign roles)</li>
+                <li>Configure onboarding wizard (AIMS staff only steps)</li>
+                <li>Claim conversations from Work Queue</li>
+                <li>View dashboards, KPIs, and revenue tracking</li>
+                <li>Access all agent pages and LYRIC workstation</li>
+            </ul>
+            <h4>Default Access:</h4>
+            <p>Command Center • Contacts • Pipeline • Conversations • Work Queue • Campaigns • AI Agents • Onboarding • Calendar • Tasks & Notes • Client Profiles • Pricing • Settings</p>
+        </div>
+
+        <div class="role-card">
+            <h3>🏢 Client</h3>
+            <p><strong>Limited access</strong> to their own business and operations.</p>
+            <h4>Can do:</h4>
+            <ul>
+                <li>View their own pipeline and conversations</li>
+                <li>Complete client onboarding (business basics, brand voice, digital presence)</li>
+                <li>Access calendar, tasks, and notes</li>
+                <li>View pricing</li>
+                <li>See their business profile</li>
+            </ul>
+            <h4>Cannot do:</h4>
+            <ul>
+                <li>See other clients' data</li>
+                <li>Access Work Queue</li>
+                <li>Manage team members</li>
+                <li>View AIMS-only agent configuration</li>
+            </ul>
+        </div>
+
+        <div class="role-card">
+            <h3>✨ LYRIC Client</h3>
+            <p><strong>Specialized access</strong> for content generation only.</p>
+            <h4>Can do:</h4>
+            <ul>
+                <li>Use LYRIC Workstation (AI content generator for social media)</li>
+                <li>View business profile</li>
+                <li>Access settings</li>
+            </ul>
+        </div>
+
+        <div class="role-card">
+            <h3>👥 User</h3>
+            <p><strong>Minimal access</strong> for team members without admin privileges.</p>
+            <h4>Can do:</h4>
+            <ul>
+                <li>View conversations</li>
+                <li>Access calendar and tasks</li>
+                <li>Basic collaboration features</li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <!-- Getting Started -->
+        <h2>Getting Started</h2>
+
+        <h3>Login</h3>
+        <ol>
+            <li>Visit the Command Center URL</li>
+            <li>Enter email and password</li>
+            <li>You'll be redirected to the dashboard matching your role</li>
+        </ol>
+
+        <h3>Your First Session</h3>
+        <ul>
+            <li><strong>Command Center</strong> shows KPIs, active pipeline, revenue recovered, and today's events</li>
+            <li>Check <strong>Settings</strong> to review your role and account info</li>
+            <li>Admins can invite team members from <strong>Settings → Invite Team Member / Client</strong></li>
+        </ul>
+
+        <!-- Core Features -->
+        <h2>Core Features</h2>
+
+        <h3>1. Live Agent Chat (Conversations)</h3>
+        <p>Access real-time conversations with AI agents and clients.</p>
+
+        <h4>How it works:</h4>
+        <ol>
+            <li>Navigate to <strong>Conversations</strong></li>
+            <li>Select a contact from the left sidebar (or click "+ New Chat")</li>
+            <li>Choose an agent (ARIA, MELODY, LYRIC, MUSE) from buttons at top</li>
+            <li>Type your message and hit Enter or click Send</li>
+        </ol>
+
+        <h4>Agent Overview:</h4>
+        <ul>
+            <li><strong>ARIA</strong> — Inbound recovery (reaching out to inactive customers)</li>
+            <li><strong>MELODY</strong> — Outbound closing (moving prospects through pipeline)</li>
+            <li><strong>LYRIC</strong> — Content generation (social media, email templates)</li>
+            <li><strong>MUSE</strong> — Reputation management (review responses, PR)</li>
+        </ul>
+
+        <h4>Key Features:</h4>
+        <ul>
+            <li>Full conversation history is saved</li>
+            <li>Switch agents mid-chat (each agent has its own thread with the contact)</li>
+            <li>Request a human agent anytime with "👤 Request Human Agent" button</li>
+        </ul>
+
+        <div class="tip">
+            <strong>When you request a human agent:</strong> Conversation status changes to "Waiting for human agent" → Chat input is disabled → Conversation moves to Work Queue → An AIMS staff member claims it and takes over → All previous messages remain visible
+        </div>
+
+        <h3>2. Work Queue (Admin Only)</h3>
+        <p>Manage conversations that need human agent intervention.</p>
+
+        <h4>How it works:</h4>
+        <ol>
+            <li>Navigate to <strong>Work Queue</strong></li>
+            <li>Left sidebar lists all conversations flagged as "needs_human" or "human_active"</li>
+            <li>Click a conversation to open it</li>
+            <li>Click <strong>Claim</strong> to assign it to yourself</li>
+            <li>Type responses in the message input at bottom</li>
+        </ol>
+
+        <h4>Workflow:</h4>
+        <ul>
+            <li>Once you claim, status becomes "human_active"</li>
+            <li>Other team members see you're assigned</li>
+            <li>Reply directly in chat (your messages appear with 👤 avatar)</li>
+            <li>Full AI + human history always visible</li>
+            <li>Click <strong>Return to AI</strong> to let AI resume</li>
+            <li>Click <strong>Close</strong> to remove from queue</li>
+        </ul>
+
+        <div class="page-break"></div>
+
+        <h3>3. Onboarding Wizard</h3>
+        <p>Split wizard based on role for gathering client information and AIMS configuration.</p>
+
+        <h4>Client Onboarding (5 Steps)</h4>
+        <p>Clients fill in what they know about their business.</p>
+        <ol>
+            <li><strong>Business Basics</strong> — Name, industry, website, location</li>
+            <li><strong>Your Situation</strong> — Challenges, goals, target audience</li>
+            <li><strong>Brand Voice</strong> — How clients should speak about their business</li>
+            <li><strong>Digital Presence</strong> — Social media accounts, email list, current tools</li>
+            <li><strong>Contacts & Access</strong> — Provide contacts for integration and access</li>
+        </ol>
+        <p><em>Status after submission: "Awaiting AIMS Configuration"</em></p>
+
+        <h4>Admin Onboarding (8 Steps)</h4>
+        <p>AIMS staff fills in everything related to what AIMS AI will do for the client.</p>
+        <ol>
+            <li><strong>Client Info</strong> — Review client-submitted business data</li>
+            <li><strong>Service Setup</strong> — Select services (recovery, outbound, content, reputation)</li>
+            <li><strong>Plan Tier</strong> — Choose tier (Starter $497/mo • Pro $797/mo • Elite $1,497/mo)</li>
+            <li><strong>Agent Configuration</strong> — Assign agent names and customize voices</li>
+            <li><strong>CRM Integration</strong> — Connect to existing CRM or databases</li>
+            <li><strong>Technical Setup</strong> — API keys, webhooks, data mappings</li>
+            <li><strong>Go-Live Planning</strong> — Set launch date, training checklist</li>
+            <li><strong>Review & Confirm</strong> — Final review before marking complete</li>
+        </ol>
+        <p><em>Status after submission: "Config Complete" with auto-generated tasks</em></p>
+
+        <h3>4. LYRIC Content Workstation</h3>
+        <p>AI-powered social media content generator.</p>
+
+        <h4>Create Tab:</h4>
+        <ol>
+            <li>Select platform (LinkedIn, Twitter, TikTok, Instagram, Facebook)</li>
+            <li>Choose content type (Thought Leadership, Product Demo, Case Study, etc.)</li>
+            <li>Fill in details (industry, topic, tone, brand voice)</li>
+            <li>Click <strong>Generate</strong></li>
+            <li>AI creates copy + auto-generates matching image</li>
+            <li>Edit, copy, or schedule directly to platform</li>
+        </ol>
+
+        <h4>Published Tab:</h4>
+        <p>Shows all published content with engagement metrics (synced from connected platforms).</p>
+
+        <h3>5. Pipeline Management</h3>
+        <p>Visual sales pipeline with contact stages and deal values.</p>
+        <p><strong>Stages:</strong> Cold • Contacted • Qualified • Negotiating • Won • Lost</p>
+        <p><strong>Features:</strong> Drag-and-drop contacts • See deal value • Click to open conversation with MELODY</p>
+
+        <h3>6. Contacts (CRM)</h3>
+        <p>Central repository of all business contacts.</p>
+        <ul>
+            <li>View contact name, company, industry, stage, source</li>
+            <li>Recent interactions and custom tags</li>
+            <li>Click to open in Conversations</li>
+            <li>Add to pipeline, create tasks, add notes</li>
+        </ul>
+
+        <h3>7. Calendar & Tasks</h3>
+        <p><strong>Calendar:</strong> View scheduled activities, meetings, go-live dates. Filter by agent or team member. Create events tied to contacts or clients.</p>
+        <p><strong>Tasks:</strong> Track action items (auto-generated from onboarding + manual). Mark complete. Assign to team members. Filter by status or owner.</p>
+
+        <h3>8. Settings</h3>
+        <ul>
+            <li><strong>Account Section:</strong> View email and role • Sign out</li>
+            <li><strong>Invite Team Member:</strong> (Admin only) Email • Name • Company • Role</li>
+            <li><strong>AI Configuration:</strong> Shows "API Active" status (API key managed server-side)</li>
+            <li><strong>Active Agents:</strong> (Admin only) Lists all 4 agents and status</li>
+            <li><strong>System Information:</strong> Platform version • Build date • AI model • Company info</li>
+        </ul>
+
+        <div class="page-break"></div>
+
+        <!-- Architecture -->
+        <h2>Architecture & Data Flow</h2>
+
+        <h3>Authentication</h3>
+        <ul>
+            <li>Supabase Auth (email/password)</li>
+            <li>Role and org_id stored in user metadata</li>
+            <li>RLS (Row Level Security) enforces data isolation at database level</li>
+        </ul>
+
+        <h3>Multi-Tenancy</h3>
+        <ul>
+            <li>Each organization (client company) has unique org_id</li>
+            <li>All data (contacts, conversations, tasks, notes) tagged with org_id</li>
+            <li>Admins see all orgs; clients only see their own</li>
+        </ul>
+
+        <h3>AI API Calls</h3>
+        <ul>
+            <li>All Anthropic API calls route through Supabase Edge Function (call-claude)</li>
+            <li>API key stored securely in Supabase secrets (never exposed to frontend)</li>
+            <li>Every user automatically uses the same backend API key</li>
+            <li>No manual key management needed</li>
+        </ul>
+
+        <h3>Conversations</h3>
+        <ul>
+            <li>Stored as JSONB array in Supabase</li>
+            <li>Full message history (user, AI, human, system events)</li>
+            <li>Status: active | needs_human | human_active | closed</li>
+            <li>Persisted after every message/response</li>
+        </ul>
+
+        <!-- Workflows -->
+        <h2>Common Workflows</h2>
+
+        <div class="workflow">
+            <h4>Workflow 1: Inbound Recovery (ARIA)</h4>
+            <ol>
+                <li>Contact requests recovery from previous project</li>
+                <li>Open Conversations → select contact → choose ARIA</li>
+                <li>ARIA follows recovery script, proposes re-engagement</li>
+                <li>If client wants human → click "Request Human Agent"</li>
+                <li>Conversation moves to Work Queue</li>
+                <li>Admin claims it and completes negotiation</li>
+                <li>Deal won → status moves to "Won" in Pipeline</li>
+            </ol>
+        </div>
+
+        <div class="workflow">
+            <h4>Workflow 2: Outbound Sales (MELODY)</h4>
+            <ol>
+                <li>New prospect in "Cold" stage</li>
+                <li>Open Conversations → new chat → choose MELODY</li>
+                <li>MELODY delivers pitch, qualifies fit</li>
+                <li>If interested → move to "Qualified" stage</li>
+                <li>Continue until deal or rejection</li>
+                <li>Admin can intervene anytime</li>
+            </ol>
+        </div>
+
+        <div class="workflow">
+            <h4>Workflow 3: Content Generation (LYRIC)</h4>
+            <ol>
+                <li>Client needs social media content</li>
+                <li>Go to LYRIC Workstation → Create tab</li>
+                <li>Select platform, content type, fill details</li>
+                <li>Click Generate → copy + image created</li>
+                <li>Publish or copy manually</li>
+            </ol>
+        </div>
+
+        <div class="workflow">
+            <h4>Workflow 4: Reputation Management (MUSE)</h4>
+            <ol>
+                <li>New review or mention appears</li>
+                <li>Open Conversations → select contact → choose MUSE</li>
+                <li>MUSE drafts response (professional, on-brand)</li>
+                <li>Admin reviews and sends or edits</li>
+                <li>Response posted to review platform</li>
+            </ol>
+        </div>
+
+        <div class="workflow">
+            <h4>Workflow 5: Onboarding a New Client</h4>
+            <ol>
+                <li>Admin invites client via Settings → Invite Team Member</li>
+                <li>Client receives email, logs in</li>
+                <li>Client navigates to Onboarding → fills 5-step wizard</li>
+                <li>Admin reviews client data, completes admin 8-step wizard</li>
+                <li>Status becomes "Config Complete"</li>
+                <li>Tasks auto-generate for each service tier</li>
+                <li>Launch date arrives → ARIA/MELODY begin outreach</li>
+            </ol>
+        </div>
+
+        <div class="page-break"></div>
+
+        <!-- Troubleshooting -->
+        <h2>Troubleshooting</h2>
+
+        <div class="warning">
+            <h4>⚠️ "Connection error. Please try again."</h4>
+            <ul>
+                <li>Check internet connection</li>
+                <li>Refresh page</li>
+                <li>If persists, Supabase may be down (check status.supabase.com)</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <h4>⚠️ "API key not configured"</h4>
+            <ul>
+                <li>AIMS admin needs to add ANTHROPIC_API_KEY to Supabase Edge Function secrets</li>
+                <li>Go to Supabase Dashboard → Edge Functions → call-claude → Secrets</li>
+                <li>Verify secret is set and active</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <h4>⚠️ Conversation history not showing</h4>
+            <ul>
+                <li>Reload page</li>
+                <li>If still missing, check Supabase conversations table</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <h4>⚠️ Can't see other org's data as admin</h4>
+            <ul>
+                <li>This is by design — RLS enforces org isolation</li>
+                <li>To see another org, contact Supabase support or use service role key</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <h4>⚠️ Invited user not receiving email</h4>
+            <ul>
+                <li>Check spam/junk folder</li>
+                <li>Verify email address spelling</li>
+                <li>Confirm Supabase SMTP is configured</li>
+                <li>Check Edge Function logs for errors</li>
+            </ul>
+        </div>
+
+        <!-- Best Practices -->
+        <h2>Tips & Best Practices</h2>
+        <ol>
+            <li><strong>Use consistent contact sources</strong> — Helps ARIA/MELODY tailor messaging</li>
+            <li><strong>Tag contacts</strong> — Makes filtering and bulk actions easier</li>
+            <li><strong>Claim Work Queue conversations immediately</strong> — Don't leave clients waiting</li>
+            <li><strong>Document everything in Notes</strong> — Helps hand-offs between team members</li>
+            <li><strong>Review LYRIC content before publishing</strong> — AI-generated copy needs human review</li>
+            <li><strong>Set go-live dates in Onboarding</strong> — Ensures coordinated launch across agents</li>
+            <li><strong>Use Tasks for action items</strong> — Prevents follow-ups from slipping through cracks</li>
+        </ol>
+
+        <!-- Footer -->
+        <div style="margin-top: 60px; padding-top: 20px; border-top: 2px solid #e0e0e0; text-align: center; color: #999;">
+            <p><strong>AIMS AI Command Center</strong> v2.0 | June 2026</p>
+            <p>For technical issues or feature requests, contact AIMS AI technical support</p>
+        </div>
+    </div>
+</body>
+</html>
