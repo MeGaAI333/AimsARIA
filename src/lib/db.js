@@ -1,5 +1,10 @@
 import { supabase } from "./supabase.js";
 
+async function getOrgId() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user?.user_metadata?.org_id || null;
+}
+
 // ── CONTACTS ──────────────────────────────────────────────────────────────────
 export async function getContacts() {
   const { data, error } = await supabase.from("contacts").select("*").order("created_at", { ascending: false });
@@ -7,7 +12,9 @@ export async function getContacts() {
   return data;
 }
 export async function addContact(c) {
-  const { data, error } = await supabase.from("contacts").insert([c]).select().single();
+  const orgId = await getOrgId();
+  const record = orgId ? { ...c, org_id: orgId } : c;
+  const { data, error } = await supabase.from("contacts").insert([record]).select().single();
   if (error) throw error;
   return data;
 }
@@ -27,7 +34,9 @@ export async function getTasks() {
   return data;
 }
 export async function addTask(t) {
-  const { data, error } = await supabase.from("tasks").insert([t]).select().single();
+  const orgId = await getOrgId();
+  const record = orgId ? { ...t, org_id: orgId } : t;
+  const { data, error } = await supabase.from("tasks").insert([record]).select().single();
   if (error) throw error;
   return data;
 }
@@ -47,7 +56,9 @@ export async function getNotes() {
   return data;
 }
 export async function addNote(n) {
-  const { data, error } = await supabase.from("notes").insert([n]).select().single();
+  const orgId = await getOrgId();
+  const record = orgId ? { ...n, org_id: orgId } : n;
+  const { data, error } = await supabase.from("notes").insert([record]).select().single();
   if (error) throw error;
   return data;
 }
@@ -63,7 +74,9 @@ export async function getEvents() {
   return data;
 }
 export async function addEvent(e) {
-  const { data, error } = await supabase.from("events").insert([e]).select().single();
+  const orgId = await getOrgId();
+  const record = orgId ? { ...e, org_id: orgId } : e;
+  const { data, error } = await supabase.from("events").insert([record]).select().single();
   if (error) throw error;
   return data;
 }

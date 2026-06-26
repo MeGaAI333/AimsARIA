@@ -16,6 +16,7 @@ const INVITE_ROLES = [
 function InvitePanel() {
   const [email, setEmail]       = useState("");
   const [name, setName]         = useState("");
+  const [company, setCompany]   = useState("");
   const [role, setRole]         = useState("lyric");
   const [status, setStatus]     = useState(null); // null | "sending" | "success" | "error"
   const [errMsg, setErrMsg]     = useState("");
@@ -24,14 +25,16 @@ function InvitePanel() {
     if (!email.trim()) return;
     setStatus("sending");
     setErrMsg("");
+    const orgId = company.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
     try {
       const { error } = await supabase.functions.invoke("invite-user", {
-        body: { email: email.trim(), name: name.trim(), role },
+        body: { email: email.trim(), name: name.trim(), role, org_id: orgId },
       });
       if (error) throw new Error(error.message);
       setStatus("success");
       setEmail("");
       setName("");
+      setCompany("");
     } catch (e) {
       setErrMsg(e.message || "Failed to send invite.");
       setStatus("error");
@@ -53,6 +56,12 @@ function InvitePanel() {
           <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:5 }}>Email *</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="client@example.com"
             style={{ width:"100%", boxSizing:"border-box", padding:"10px 14px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+        </div>
+        <div style={{ gridColumn:"1 / -1" }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:5 }}>Company Name</label>
+          <input value={company} onChange={e => setCompany(e.target.value)} placeholder="e.g. Acme HVAC (used to isolate their data)"
+            style={{ width:"100%", boxSizing:"border-box", padding:"10px 14px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+          {company.trim() && <div style={{ fontSize:10, color:C.textMuted, marginTop:4 }}>Org ID: {company.trim().toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"")}</div>}
         </div>
       </div>
 
