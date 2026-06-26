@@ -103,3 +103,22 @@ export async function saveProfile(orgId, profile) {
   if (error) throw error;
   return data;
 }
+
+// ── ONBOARDING ────────────────────────────────────────────────────────────────
+export async function getOnboarding(orgId) {
+  const { data, error } = await supabase.from("onboarding_data").select("*").eq("org_id", orgId).single();
+  if (error && error.code !== "PGRST116") throw error;
+  return data || null;
+}
+export async function getAllOnboarding() {
+  const { data, error } = await supabase.from("onboarding_data").select("*").order("updated_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+export async function saveOnboarding(orgId, data) {
+  const { data: result, error } = await supabase.from("onboarding_data")
+    .upsert({ ...data, org_id: orgId, updated_at: new Date().toISOString() }, { onConflict: "org_id" })
+    .select().single();
+  if (error) throw error;
+  return result;
+}
