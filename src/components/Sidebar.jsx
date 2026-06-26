@@ -16,6 +16,7 @@ const ROLE_NAV = {
     { id:"agent-lyric",  agentId:"lyric", workstation:true },
     { id:"agent-muse",   agentId:"muse" },
     { divider:"MANAGEMENT" },
+    { id:"onboarding",     icon:"🚀",  label:"Onboarding" },
     { id:"calendar",       icon:"📅",  label:"Calendar" },
     { id:"tasks",          icon:"✓",   label:"Tasks" },
     { id:"notes",          icon:"📝",  label:"Notes" },
@@ -26,6 +27,7 @@ const ROLE_NAV = {
   ],
   client: [
     { id:"dashboard",      icon:"⬡",  label:"Command Center" },
+    { id:"onboarding",     icon:"🚀",  label:"My Onboarding" },
     { id:"pipeline",       icon:"◈",   label:"Pipeline" },
     { id:"conversations",  icon:"💬",  label:"Conversations" },
     { id:"campaigns",      icon:"📡",  label:"Campaigns" },

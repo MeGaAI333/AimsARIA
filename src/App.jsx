@@ -16,6 +16,7 @@ import Notes from "./views/Notes.jsx";
 import Pricing from "./views/Pricing.jsx";
 import Settings from "./views/Settings.jsx";
 import ClientProfile from "./views/ClientProfile.jsx";
+import Onboarding from "./views/Onboarding.jsx";
 
 export default function App() {
   const [session, setSession]           = useState(undefined); // undefined = loading
@@ -76,6 +77,7 @@ export default function App() {
       case "agent-muse":        return <AgentPage agentId="muse"   apiKey={apiKey} setActiveTab={navTo} />;
       case "lyric-workstation": return <LyricWorkstation apiKey={apiKey} orgId={orgId} />;
       case "client-profile":    return <ClientProfile role={role} orgId={orgId} />;
+      case "onboarding":        return <Onboarding role={role} orgId={orgId} />;
       case "calendar":          return <CalendarView />;
       case "tasks":             return <Tasks />;
       case "notes":             return <Notes />;
