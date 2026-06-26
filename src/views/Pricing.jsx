@@ -1,12 +1,21 @@
 import { C } from "../data.js";
 
 const PLANS = [
-  { name:"Starter",  agents:"ARIA only",                             price:"$497",  target:"Small businesses — pure lead recovery",             color:"#F59E0B" },
-  { name:"Pro",      agents:"ARIA + MELODY",                         price:"$997",  target:"Service businesses ready to close faster",           color:"#4F7EFF" },
-  { name:"Growth",   agents:"ARIA + MELODY + MUSE",                  price:"$1,297",target:"High-inbound businesses needing 24/7 support",       color:"#00B4FF" },
-  { name:"Complete", agents:"All 4 Agents",                          price:"$1,797",target:"Full autonomous marketing & sales operation",         color:"#39FF14" },
-  { name:"Elite",    agents:"All 4 + White-label + 10 Sub-accounts", price:"$2,497",target:"Multi-location franchises",                          color:"#A855F7" },
-  { name:"Agency",   agents:"All 4 + 25 Sub-accounts + Rev Share",   price:"$3,500",target:"Marketing agencies reselling AIMS",                  color:"#FF0080" },
+  {
+    name:"Starter", price:"$497", setup:"$997", popular:false, color:"#F59E0B",
+    target:"Small businesses — pure AI lead recovery",
+    features:["100 leads/month","SMS + Email outreach","1 industry playbook","Analytics dashboard","Email support"],
+  },
+  {
+    name:"Pro", price:"$797", setup:"$1,500", popular:true, color:"#4F7EFF",
+    target:"Service businesses ready to recover AND close faster",
+    features:["500 leads/month","SMS, Email, Voice + DM","All 11 industry playbooks","Custom AI agent name","CRM sync + A/B testing","Priority support"],
+  },
+  {
+    name:"Elite", price:"$1,497", setup:"$2,500", popular:false, color:"#A855F7",
+    target:"Multi-location operations needing full control",
+    features:["Unlimited leads","All channels + WhatsApp","White-label your brand","10 sub-accounts","Dedicated CSM","API access"],
+  },
 ];
 
 const ROIS = [
@@ -28,19 +37,22 @@ export default function Pricing() {
     <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%" }}>
       <div style={{ marginBottom:24 }}>
         <h2 style={{ margin:0, fontSize:20, fontWeight:800, color:C.textPrimary }}>Pricing Tiers</h2>
-        <p style={{ color:C.textSecondary, fontSize:12, margin:"4px 0 0" }}>Setup fee: $997–$5,000 (all tiers) · Monthly recurring · Cancel anytime</p>
+        <p style={{ color:C.textSecondary, fontSize:12, margin:"4px 0 0" }}>No contracts · Cancel anytime · 30-day money-back guarantee · TCPA compliant</p>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:14, marginBottom:28 }}>
         {PLANS.map(p => (
-          <div key={p.name} style={{ background:C.card, border:`1px solid ${p.color}40`, borderRadius:12, padding:22, position:"relative" }}>
-            {p.name === "Complete" && (
-              <div style={{ position:"absolute", top:-10, left:"50%", transform:"translateX(-50%)", background:p.color, color:"#000", fontSize:10, fontWeight:800, padding:"3px 12px", borderRadius:10, whiteSpace:"nowrap" }}>MOST POPULAR</div>
+          <div key={p.name} style={{ background:C.card, border:`2px solid ${p.popular?p.color:C.border}`, borderRadius:12, padding:22, position:"relative" }}>
+            {p.popular && (
+              <div style={{ position:"absolute", top:-11, left:"50%", transform:"translateX(-50%)", background:p.color, color:"#fff", fontSize:10, fontWeight:800, padding:"3px 14px", borderRadius:10, whiteSpace:"nowrap" }}>MOST POPULAR</div>
             )}
             <div style={{ fontSize:12, fontWeight:800, color:p.color, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>{p.name}</div>
-            <div style={{ fontSize:28, fontWeight:900, color:C.textPrimary, letterSpacing:-1, marginBottom:4 }}>{p.price}<span style={{ fontSize:13, fontWeight:500, color:C.textSecondary }}>/mo</span></div>
-            <div style={{ fontSize:12, color:p.color, fontWeight:600, marginBottom:8 }}>{p.agents}</div>
-            <div style={{ fontSize:11, color:C.textSecondary, lineHeight:1.5, marginBottom:16 }}>{p.target}</div>
-            <button style={{ width:"100%", padding:"8px 0", borderRadius:7, border:`1px solid ${p.color}`, background:`${p.color}15`, color:p.color, fontSize:12, fontWeight:700, cursor:"pointer" }}>Get Started →</button>
+            <div style={{ fontSize:28, fontWeight:900, color:C.textPrimary, letterSpacing:-1, marginBottom:2 }}>{p.price}<span style={{ fontSize:13, fontWeight:500, color:C.textSecondary }}>/mo</span></div>
+            <div style={{ fontSize:11, color:C.textMuted, marginBottom:12 }}>{p.setup} one-time setup</div>
+            <div style={{ fontSize:11, color:C.textSecondary, lineHeight:1.5, marginBottom:14 }}>{p.target}</div>
+            <ul style={{ margin:"0 0 16px", padding:"0 0 0 16px" }}>
+              {p.features.map(f => <li key={f} style={{ fontSize:11, color:C.textSecondary, marginBottom:4 }}>{f}</li>)}
+            </ul>
+            <button style={{ width:"100%", padding:"8px 0", borderRadius:7, border:`1px solid ${p.color}`, background:p.popular?p.color:`${p.color}15`, color:p.popular?"#fff":p.color, fontSize:12, fontWeight:700, cursor:"pointer" }}>Get Started →</button>
           </div>
         ))}
       </div>
