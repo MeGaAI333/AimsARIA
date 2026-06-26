@@ -24,7 +24,6 @@ export default function App() {
   const [tab, setTab]                   = useState("dashboard");
   const [role, setRole]                 = useState("user");
   const [orgId, setOrgId]               = useState("");
-  const [apiKey, setApiKey]             = useState(() => localStorage.getItem("aims_api_key") || "");
   const [selectedLead, setSelectedLead] = useState(null);
 
   useEffect(() => {
@@ -69,21 +68,21 @@ export default function App() {
       case "dashboard":         return <Dashboard setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
       case "crm":               return <CRM setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
       case "pipeline":          return <Pipeline setSelectedLead={setSelectedLead} setActiveTab={navTo} />;
-      case "conversations":     return <Conversations selectedLead={selectedLead} setSelectedLead={setSelectedLead} apiKey={apiKey} orgId={orgId} />;
+      case "conversations":     return <Conversations selectedLead={selectedLead} setSelectedLead={setSelectedLead} orgId={orgId} />;
       case "work-queue":        return <WorkQueue userEmail={session.user.email} />;
       case "campaigns":         return <Campaigns />;
-      case "agent-aria":        return <AgentPage agentId="aria"   apiKey={apiKey} setActiveTab={navTo} orgId={orgId} role={role} />;
-      case "agent-melody":      return <AgentPage agentId="melody" apiKey={apiKey} setActiveTab={navTo} orgId={orgId} role={role} />;
-      case "agent-lyric":       return <AgentPage agentId="lyric"  apiKey={apiKey} setActiveTab={navTo} orgId={orgId} role={role} />;
-      case "agent-muse":        return <AgentPage agentId="muse"   apiKey={apiKey} setActiveTab={navTo} orgId={orgId} role={role} />;
-      case "lyric-workstation": return <LyricWorkstation apiKey={apiKey} orgId={orgId} />;
+      case "agent-aria":        return <AgentPage agentId="aria"   setActiveTab={navTo} orgId={orgId} role={role} />;
+      case "agent-melody":      return <AgentPage agentId="melody" setActiveTab={navTo} orgId={orgId} role={role} />;
+      case "agent-lyric":       return <AgentPage agentId="lyric"  setActiveTab={navTo} orgId={orgId} role={role} />;
+      case "agent-muse":        return <AgentPage agentId="muse"   setActiveTab={navTo} orgId={orgId} role={role} />;
+      case "lyric-workstation": return <LyricWorkstation orgId={orgId} />;
       case "client-profile":    return <ClientProfile role={role} orgId={orgId} />;
       case "onboarding":        return <Onboarding role={role} orgId={orgId} />;
       case "calendar":          return <CalendarView />;
       case "tasks":             return <Tasks />;
       case "notes":             return <Notes />;
       case "pricing":           return <Pricing />;
-      case "settings":          return <Settings apiKey={apiKey} setApiKey={setApiKey} role={role} userEmail={session.user.email} onSignOut={handleSignOut} />;
+      case "settings":          return <Settings role={role} userEmail={session.user.email} onSignOut={handleSignOut} />;
       default:                  return <Dashboard leads={leads} setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
     }
   };

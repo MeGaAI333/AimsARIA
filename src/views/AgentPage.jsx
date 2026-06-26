@@ -76,7 +76,7 @@ function agentKpis(agentId, stats) {
   }
 }
 
-function LiveChat({ agent, apiKey }) {
+function LiveChat({ agent }) {
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -90,13 +90,13 @@ function LiveChat({ agent, apiKey }) {
     setInput("");
     setLoading(true);
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/call-claude`, {
         method:"POST",
-        headers:{ "Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true" },
-        body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:800, system:agent.systemPrompt, messages:[...msgs, userMsg].map(m => ({ role:m.role, content:m.content })) }),
+        headers:{ "Content-Type":"application/json", "Authorization":`Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
+        body:JSON.stringify({ model:"claude-sonnet-4-6", system:agent.systemPrompt, messages:[...msgs, userMsg].map(m => ({ role:m.role, content:m.content })) }),
       });
       const data = await res.json();
-      setMsgs(prev => [...prev, { id:Date.now()+1, role:"assistant", content:data.content?.[0]?.text || "⚠️ " + (data.error?.message || "Error") }]);
+      setMsgs(prev => [...prev, { id:Date.now()+1, role:"assistant", content:data.content?.[0]?.text || "⚠️ " + (data.error || "Error") }]);
     } catch { setMsgs(prev => [...prev, { id:Date.now()+1, role:"assistant", content:"⚠️ Connection error." }]); }
     setLoading(false);
   };
@@ -146,7 +146,7 @@ function LiveChat({ agent, apiKey }) {
   );
 }
 
-export default function AgentPage({ agentId, apiKey, setActiveTab, orgId, role }) {
+export default function AgentPage({ agentId, setActiveTab, orgId, role }) {
   const agent = AGENTS.find(a => a.id === agentId);
   const stats = useOrgStats();
   if (!agent) return <div style={{ padding:40, color:C.textMuted }}>Agent not found.</div>;
@@ -241,7 +241,7 @@ export default function AgentPage({ agentId, apiKey, setActiveTab, orgId, role }
           </div>
 
           {/* Live Chat */}
-          <LiveChat agent={agent} apiKey={apiKey} />
+          <LiveChat agent={agent} />
         </div>
       </div>
     </div>

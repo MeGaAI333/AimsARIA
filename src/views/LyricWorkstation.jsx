@@ -40,7 +40,7 @@ function extractImagePrompt(text, industry, tone) {
 
 const platIcon = { "All Platforms":"🌐", Facebook:"📘", Instagram:"📸", LinkedIn:"💼" };
 const typeIcon = { Post:"📝", "Reel Script":"🎬", Carousel:"🎠", Email:"📧", Newsletter:"📰", "Blog Post":"✍️" };
-export default function LyricWorkstation({ apiKey, orgId }) {
+export default function LyricWorkstation({ orgId }) {
   const [tab, setTab]               = useState("create");
   const [platform, setPlatform]     = useState("All Platforms");
   const [contentType, setContentType] = useState("Post");
@@ -72,26 +72,25 @@ export default function LyricWorkstation({ apiKey, orgId }) {
 
   const generate = async () => {
     if (!topic.trim()) return;
-    if (!apiKey) { setGenerated("⚠️ Please add your API key in Settings to use LYRIC's content generator."); return; }
     setLoading(true);
     setGenerated("");
     setImageUrl("");
     setImageLoaded(false);
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/call-claude`, {
         method:"POST",
-        headers:{ "Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true" },
-        body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1500, system:LYRIC.systemPrompt, messages:[{ role:"user", content:buildPrompt({ platform, contentType, industry, topic, tone, profile }) }] }),
+        headers:{ "Content-Type":"application/json", "Authorization":`Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
+        body:JSON.stringify({ model:"claude-sonnet-4-6", system:LYRIC.systemPrompt, messages:[{ role:"user", content:buildPrompt({ platform, contentType, industry, topic, tone, profile }) }] }),
       });
       const data = await res.json();
-      const text = data.content?.[0]?.text || (data.error ? `⚠️ ${data.error.message}` : "Error generating content.");
+      const text = data.content?.[0]?.text || (data.error ? `⚠️ ${data.error}` : "Error generating content.");
       setGenerated(text);
 
       // Generate image from extracted prompt
       const imgPrompt = extractImagePrompt(text, industry, tone);
       const seed = Math.floor(Math.random() * 999999);
       setImageUrl(`https://image.pollinations.ai/prompt/${encodeURIComponent(imgPrompt)}?width=1200&height=630&nologo=true&model=flux&seed=${seed}`);
-    } catch { setGenerated("⚠️ Connection error. Check your API key."); }
+    } catch { setGenerated("⚠️ Connection error. Please try again."); }
     setLoading(false);
   };
 

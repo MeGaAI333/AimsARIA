@@ -18,7 +18,7 @@ function useContacts() {
   return contacts;
 }
 
-export default function Conversations({ selectedLead, setSelectedLead, apiKey, orgId }) {
+export default function Conversations({ selectedLead, setSelectedLead, orgId }) {
   const [activeAgentId, setActiveAgentId] = useState("aria");
   const [messages, setMessages]           = useState([]);
   const [convId, setConvId]               = useState(null);
@@ -67,17 +67,17 @@ export default function Conversations({ selectedLead, setSelectedLead, apiKey, o
       const history = [...messages, userMsg]
         .filter(m => m.role !== "system")
         .map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }));
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/call-claude`, {
         method:"POST",
-        headers:{ "Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true" },
+        headers:{ "Content-Type":"application/json", "Authorization":`Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
         body:JSON.stringify({
-          model:"claude-sonnet-4-6", max_tokens:1000,
+          model:"claude-sonnet-4-6",
           system: activeAgent.systemPrompt + (selectedLead ? `\n\nContact context: ${selectedLead.name}, ${selectedLead.company||""}, ${selectedLead.industry||""}. Stage: ${selectedLead.stage}. Source: ${selectedLead.source||""}.` : ""),
           messages: history,
         }),
       });
       const data = await res.json();
-      const text = data.content?.[0]?.text || (data.error ? `⚠️ API Error: ${data.error.message}` : "Unable to respond.");
+      const text = data.content?.[0]?.text || (data.error ? `⚠️ ${data.error}` : "Unable to respond.");
       const aiMsg = {
         id: Date.now()+1, role:"ai", agent:activeAgentId,
         channel: activeAgent.channels[0], ts: new Date().toISOString(), content: text,
@@ -186,7 +186,6 @@ export default function Conversations({ selectedLead, setSelectedLead, apiKey, o
               <div style={{ fontSize:40, marginBottom:10 }}>{activeAgent.avatar}</div>
               <div style={{ fontSize:14, color:C.textSecondary, fontWeight:600 }}>{activeAgent.name} is ready</div>
               <div style={{ fontSize:12, color:C.textMuted, marginTop:4, maxWidth:320, margin:"8px auto 0" }}>{activeAgent.description}</div>
-              {!apiKey && <div style={{ fontSize:11, color:C.amber, marginTop:16, padding:"8px 14px", background:`${C.amber}15`, border:`1px solid ${C.amber}30`, borderRadius:8, display:"inline-block" }}>⚠️ Add your API key in Settings to activate live chat</div>}
             </div>
           )}
           {messages.map((msg, i) => {
@@ -244,8 +243,8 @@ export default function Conversations({ selectedLead, setSelectedLead, apiKey, o
               <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key==="Enter" && !e.shiftKey && send()}
                 placeholder={`Message ${activeAgent.name}…`}
                 style={{ flex:1, padding:"9px 13px", borderRadius:7, background:C.card, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
-              <button onClick={send} disabled={loading || !input.trim() || !apiKey}
-                style={{ padding:"9px 18px", borderRadius:7, border:"none", background:!input.trim()||loading||!apiKey?C.border:activeAgent.color, color:"#fff", fontSize:13, fontWeight:700, cursor:!input.trim()||loading||!apiKey?"not-allowed":"pointer" }}>
+              <button onClick={send} disabled={loading || !input.trim()}
+                style={{ padding:"9px 18px", borderRadius:7, border:"none", background:!input.trim()||loading?C.border:activeAgent.color, color:"#fff", fontSize:13, fontWeight:700, cursor:!input.trim()||loading?"not-allowed":"pointer" }}>
                 {loading ? "…" : "Send"}
               </button>
             </div>
