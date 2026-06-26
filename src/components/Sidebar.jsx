@@ -9,6 +9,7 @@ const ROLE_NAV = {
     { id:"pipeline",     icon:"◈",   label:"Pipeline" },
     { divider:"COMMUNICATION" },
     { id:"conversations",icon:"💬",  label:"Conversations" },
+    { id:"work-queue",   icon:"📋",  label:"Work Queue" },
     { id:"campaigns",    icon:"📡",  label:"Campaigns" },
     { divider:"AI AGENTS" },
     { id:"agent-aria",   agentId:"aria" },

@@ -122,3 +122,77 @@ export async function saveOnboarding(orgId, data) {
   if (error) throw error;
   return result;
 }
+
+// ── CONVERSATIONS ─────────────────────────────────────────────────────────────
+export async function getOrCreateConversation(contactId, contactName, contactCompany, orgId, agentId) {
+  const { data } = await supabase
+    .from("conversations")
+    .select("*")
+    .eq("contact_id", contactId)
+    .in("status", ["active", "needs_human", "human_active"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (data) return data;
+
+  const { data: created, error } = await supabase
+    .from("conversations")
+    .insert([{ contact_id: contactId, contact_name: contactName, contact_company: contactCompany || "", org_id: orgId || "", agent_id: agentId, status: "active", messages: [] }])
+    .select().single();
+  if (error) throw error;
+  return created;
+}
+
+export async function appendConversationMessage(convId, message) {
+  const { data: conv } = await supabase.from("conversations").select("messages").eq("id", convId).single();
+  const messages = [...(conv?.messages || []), message];
+  const { data, error } = await supabase.from("conversations")
+    .update({ messages, updated_at: new Date().toISOString() })
+    .eq("id", convId).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function setConversationNeedsHuman(convId) {
+  const { data, error } = await supabase.from("conversations")
+    .update({ status: "needs_human", updated_at: new Date().toISOString() })
+    .eq("id", convId).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getQueuedConversations() {
+  const { data, error } = await supabase.from("conversations")
+    .select("*")
+    .in("status", ["needs_human", "human_active"])
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function claimConversation(convId, humanName) {
+  const { data, error } = await supabase.from("conversations")
+    .update({ status: "human_active", assigned_to_human: humanName, updated_at: new Date().toISOString() })
+    .eq("id", convId).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function returnConversationToAI(convId, humanName) {
+  const { data: conv } = await supabase.from("conversations").select("messages").eq("id", convId).single();
+  const sysMsg = { id: Date.now(), role: "system", content: `${humanName} returned conversation to AI`, ts: new Date().toISOString() };
+  const messages = [...(conv?.messages || []), sysMsg];
+  const { data, error } = await supabase.from("conversations")
+    .update({ status: "active", assigned_to_human: null, messages, updated_at: new Date().toISOString() })
+    .eq("id", convId).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function closeConversation(convId) {
+  const { data, error } = await supabase.from("conversations")
+    .update({ status: "closed", updated_at: new Date().toISOString() })
+    .eq("id", convId).select().single();
+  if (error) throw error;
+  return data;
+}

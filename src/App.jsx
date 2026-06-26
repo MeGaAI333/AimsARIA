@@ -15,6 +15,7 @@ import Tasks from "./views/Tasks.jsx";
 import Notes from "./views/Notes.jsx";
 import Pricing from "./views/Pricing.jsx";
 import Settings from "./views/Settings.jsx";
+import WorkQueue from "./views/WorkQueue.jsx";
 import ClientProfile from "./views/ClientProfile.jsx";
 import Onboarding from "./views/Onboarding.jsx";
 
@@ -68,7 +69,8 @@ export default function App() {
       case "dashboard":         return <Dashboard setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
       case "crm":               return <CRM setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
       case "pipeline":          return <Pipeline setSelectedLead={setSelectedLead} setActiveTab={navTo} />;
-      case "conversations":     return <Conversations selectedLead={selectedLead} setSelectedLead={setSelectedLead} apiKey={apiKey} />;
+      case "conversations":     return <Conversations selectedLead={selectedLead} setSelectedLead={setSelectedLead} apiKey={apiKey} orgId={orgId} />;
+      case "work-queue":        return <WorkQueue userEmail={session.user.email} />;
       case "campaigns":         return <Campaigns />;
       case "agent-aria":        return <AgentPage agentId="aria"   apiKey={apiKey} setActiveTab={navTo} orgId={orgId} role={role} />;
       case "agent-melody":      return <AgentPage agentId="melody" apiKey={apiKey} setActiveTab={navTo} orgId={orgId} role={role} />;
