@@ -71,10 +71,11 @@ export default function App() {
       case "conversations":     return <Conversations selectedLead={selectedLead} setSelectedLead={setSelectedLead} orgId={orgId} />;
       case "work-queue":        return <WorkQueue userEmail={session.user.email} />;
       case "campaigns":         return <Campaigns />;
-      case "agent-aria":        return <AgentPage agentId="aria"   setActiveTab={navTo} orgId={orgId} role={role} />;
-      case "agent-melody":      return <AgentPage agentId="melody" setActiveTab={navTo} orgId={orgId} role={role} />;
-      case "agent-lyric":       return <AgentPage agentId="lyric"  setActiveTab={navTo} orgId={orgId} role={role} />;
-      case "agent-muse":        return <AgentPage agentId="muse"   setActiveTab={navTo} orgId={orgId} role={role} />;
+      case "agent-aria":        return <AgentPage agentId="aria"     setActiveTab={navTo} orgId={orgId} role={role} />;
+      case "agent-melody":      return <AgentPage agentId="melody"   setActiveTab={navTo} orgId={orgId} role={role} />;
+      case "agent-lyric":       return <AgentPage agentId="lyric"    setActiveTab={navTo} orgId={orgId} role={role} />;
+      case "agent-muse":        return <AgentPage agentId="muse"     setActiveTab={navTo} orgId={orgId} role={role} />;
+      case "agent-allegra":     return <AgentPage agentId="allegra"  setActiveTab={navTo} orgId={orgId} role={role} />;
       case "lyric-workstation": return <LyricWorkstation orgId={orgId} />;
       case "client-profile":    return <ClientProfile role={role} orgId={orgId} />;
       case "onboarding":        return <Onboarding role={role} orgId={orgId} />;
