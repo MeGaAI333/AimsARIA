@@ -52,7 +52,7 @@ const BLANK = {
   current_crm:"", crm_other:"", situation_notes:"",
   services_selected:[], plan_tier:"Pro ($797/mo)",
   lead_sources:[], has_cold_list:false, cold_list_size:"", lead_source_notes:"",
-  agent_name:"", brand_tone:"Professional", emoji_use:false,
+  agent_name:"", brand_tone:[], emoji_use:false,
   certifications:"", phrases_to_avoid:"", top_objections:"",
   google_rating:"", google_review_count:"", social_platforms:[],
   last_post_date:"", has_email_list:false, email_list_size:"", has_job_photos:false,
@@ -242,17 +242,7 @@ function renderAdminStep(step, form, set, toggle) {
         <SectionHead title="Brand & Agent Voice Configuration" />
         <Field label="AI Agent Display Name (how ARIA signs messages)" k="agent_name"
           placeholder='e.g. "Aria from Acme HVAC" or just "Aria"' adminOnly {...shared} />
-        <div style={{ marginBottom:16 }}>
-          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>Brand Tone</label>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
-            {TONES.map(t => (
-              <button key={t} onClick={() => set("brand_tone", t)}
-                style={{ padding:"9px 12px", borderRadius:8, border:`2px solid ${form.brand_tone===t?C.primary:C.border}`, background:form.brand_tone===t?`${C.primary}15`:"transparent", color:form.brand_tone===t?C.primary:C.textMuted, fontSize:11, fontWeight:700, cursor:"pointer" }}>
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
+        <Chips label="Brand Tones (select all that apply)" k="brand_tone" options={TONES} form={form} toggle={toggle} />
         <Toggle label="Use emojis in outreach messages" desc="Appropriate for MedSpa, consumer brands; avoid for legal, financial" k="emoji_use" {...shared} />
         <Textarea label="Certifications / Credentials to Highlight" k="certifications"
           placeholder="e.g. NATE-certified, 10-year warranty, A+ BBB, Licensed & Insured" rows={2} {...shared} />
@@ -359,17 +349,7 @@ function renderClientStep(step, form, set, toggle) {
     case 2: return (
       <>
         <SectionHead title="Your Brand Voice" note="Your agents will communicate in your brand's voice — help us get it right." />
-        <div style={{ marginBottom:16 }}>
-          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>What tone fits your brand best?</label>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
-            {TONES.map(t => (
-              <button key={t} onClick={() => set("brand_tone", t)}
-                style={{ padding:"9px 12px", borderRadius:8, border:`2px solid ${form.brand_tone===t?C.primary:C.border}`, background:form.brand_tone===t?`${C.primary}15`:"transparent", color:form.brand_tone===t?C.primary:C.textMuted, fontSize:11, fontWeight:700, cursor:"pointer" }}>
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
+        <Chips label="Which tones fit your brand? (select all that apply)" k="brand_tone" options={TONES} form={form} toggle={toggle} />
         <Toggle label="Use emojis in messages?" desc="Great for consumer brands and MedSpas. Skip for legal, financial, or B2B." k="emoji_use" {...shared} />
         <Textarea label="Certifications & Credentials to Mention" k="certifications"
           placeholder="e.g. NATE-certified, 10-year labor warranty, A+ BBB, Licensed & Insured in TX, 200+ 5-star reviews" rows={2} {...shared} />

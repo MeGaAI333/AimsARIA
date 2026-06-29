@@ -11,7 +11,7 @@ function ProfileForm({ orgId }) {
     business_name:"", industry:"", website:"", service_area:"",
     target_audience:"", demographics:"", pain_points:"",
     platforms:[], posting_frequency:{},
-    content_pillars:"", brand_tone:"Professional", competitors:"",
+    content_pillars:"", brand_tone:[], competitors:"",
     restrictions:"", hashtags:"", approval_contact:"",
     buffer_setup:false, notes:""
   };
@@ -38,6 +38,16 @@ function ProfileForm({ orgId }) {
         ? prev.platforms.filter(x => x !== p)
         : [...(prev.platforms||[]), p];
       return { ...prev, platforms };
+    });
+    setSaved(false);
+  };
+
+  const toggleTone = (t) => {
+    setForm(prev => {
+      const brand_tone = (prev.brand_tone||[]).includes(t)
+        ? (prev.brand_tone||[]).filter(x => x !== t)
+        : [...(prev.brand_tone||[]), t];
+      return { ...prev, brand_tone };
     });
     setSaved(false);
   };
@@ -133,11 +143,11 @@ function ProfileForm({ orgId }) {
         <Textarea label="Content Pillars / Themes" k="content_pillars"
           placeholder="e.g. Before & After, Seasonal Tips, Customer Testimonials, Team Spotlight, Promotions, Educational How-Tos" rows={2} />
         <div style={{ marginBottom:14 }}>
-          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>Brand Tone</label>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>Brand Tones (select all that apply)</label>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
             {TONES.map(t => (
-              <button key={t} onClick={() => set("brand_tone", t)}
-                style={{ padding:"9px 12px", borderRadius:8, border:`2px solid ${form.brand_tone===t?C.primary:C.border}`, background:form.brand_tone===t?`${C.primary}15`:"transparent", color:form.brand_tone===t?C.primary:C.textMuted, fontSize:11, fontWeight:700, cursor:"pointer", textAlign:"left" }}>
+              <button key={t} onClick={() => toggleTone(t)}
+                style={{ padding:"7px 14px", borderRadius:20, border:`2px solid ${(form.brand_tone||[]).includes(t)?C.primary:C.border}`, background:(form.brand_tone||[]).includes(t)?`${C.primary}15`:"transparent", color:(form.brand_tone||[]).includes(t)?C.primary:C.textMuted, fontSize:12, fontWeight:700, cursor:"pointer" }}>
                 {t}
               </button>
             ))}

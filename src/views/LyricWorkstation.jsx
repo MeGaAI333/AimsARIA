@@ -13,7 +13,8 @@ const INDUSTRIES = ["Roofing","Law Firm","Financial Services","Real Estate","Med
 
 function buildPrompt({ platform, contentType, industry, topic, tone, profile }) {
   const platformStr = platform === "All Platforms" ? "Facebook, Instagram, and LinkedIn" : platform;
-  const profileCtx = profile ? `\n\nCLIENT PROFILE:\nBusiness: ${profile.business_name||""}\nService Area: ${profile.service_area||""}\nTarget Audience: ${profile.target_audience||""}\nContent Pillars: ${profile.content_pillars||""}\nBrand Tone: ${profile.brand_tone||""}\nContent Restrictions: ${profile.restrictions||""}\nRequired Hashtags: ${profile.hashtags||""}\nKey Pain Points: ${profile.pain_points||""}` : "";
+  const brandToneStr = profile?.brand_tone ? (Array.isArray(profile.brand_tone) ? profile.brand_tone.join(", ") : profile.brand_tone) : "";
+  const profileCtx = profile ? `\n\nCLIENT PROFILE:\nBusiness: ${profile.business_name||""}\nService Area: ${profile.service_area||""}\nTarget Audience: ${profile.target_audience||""}\nContent Pillars: ${profile.content_pillars||""}\nBrand Tone: ${brandToneStr}\nContent Restrictions: ${profile.restrictions||""}\nRequired Hashtags: ${profile.hashtags||""}\nKey Pain Points: ${profile.pain_points||""}` : "";
   const base = `You are LYRIC — AIMS AI's Content & Brand Voice agent. Write in LYRIC's voice: authoritative but never corporate, industry-fluent, and every piece ends with a clear CTA.\n\nIndustry: ${industry}\nGoal/Topic: ${topic}\nTone: ${tone}\nPlatform: ${platformStr}${profileCtx}\n\n`;
   const imgNote = `\n\n[IMAGE PROMPT]: Write a single sentence describing a professional marketing visual to accompany this content. Be specific about the scene, style, and mood.`;
 
@@ -65,7 +66,9 @@ export default function LyricWorkstation({ orgId }) {
       }
       if (p.brand_tone) {
         const toneMap = { "Professional":"Authoritative", "Friendly & Casual":"Conversational", "Urgent / Sales-Focused":"Urgency-Driven", "Educational":"Educational" };
-        setTone(toneMap[p.brand_tone] || "Authoritative");
+        const brandTones = Array.isArray(p.brand_tone) ? p.brand_tone : [p.brand_tone];
+        const mappedTone = brandTones.length > 0 ? toneMap[brandTones[0]] || "Authoritative" : "Authoritative";
+        setTone(mappedTone);
       }
     }).catch(() => {});
   }, [orgId]);
