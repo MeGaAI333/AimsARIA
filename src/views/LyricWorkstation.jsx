@@ -183,7 +183,6 @@ export default function LyricWorkstation({ orgId }) {
                     <div style={{ fontSize:48, marginBottom:16 }}>🎵</div>
                     <div style={{ fontSize:16, color:C.textSecondary, fontWeight:600, marginBottom:8 }}>LYRIC is ready to create</div>
                     <div style={{ fontSize:13, color:C.textMuted }}>Select a platform, content type, and topic — then hit Generate</div>
-                    {!apiKey && <div style={{ fontSize:11, color:C.amber, marginTop:20, padding:"10px 18px", background:`${C.amber}15`, border:`1px solid ${C.amber}30`, borderRadius:8, display:"inline-block" }}>⚠️ API key required — add it in Settings</div>}
                   </div>
                 )}
                 {loading && (

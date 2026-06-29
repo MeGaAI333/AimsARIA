@@ -119,7 +119,6 @@ function LiveChat({ agent }) {
           <div style={{ textAlign:"center", color:C.textMuted, marginTop:60 }}>
             <div style={{ fontSize:28 }}>{agent.avatar}</div>
             <div style={{ fontSize:12, marginTop:8 }}>{agent.description}</div>
-            {!apiKey && <div style={{ fontSize:11, color:C.amber, marginTop:12 }}>⚠️ Add API key in Settings to activate</div>}
           </div>
         )}
         {msgs.map(m => {
@@ -137,8 +136,8 @@ function LiveChat({ agent }) {
         <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key==="Enter" && send()}
           placeholder={`Ask ${agent.name} anything…`}
           style={{ flex:1, padding:"8px 12px", borderRadius:6, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
-        <button onClick={send} disabled={!input.trim()||loading||!apiKey}
-          style={{ padding:"8px 16px", borderRadius:6, border:"none", background:!input.trim()||loading||!apiKey ? C.border:agent.color, color:"#fff", fontSize:13, fontWeight:700, cursor:!input.trim()||loading||!apiKey?"not-allowed":"pointer" }}>
+        <button onClick={send} disabled={!input.trim()||loading}
+          style={{ padding:"8px 16px", borderRadius:6, border:"none", background:!input.trim()||loading ? C.border:agent.color, color:"#fff", fontSize:13, fontWeight:700, cursor:!input.trim()||loading?"not-allowed":"pointer" }}>
           {loading?"…":"Send"}
         </button>
       </div>
