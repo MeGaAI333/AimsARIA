@@ -74,15 +74,19 @@ function imgUrl(prompt, square = false) {
 }
 
 // Split carousel copy into per-slide { num, title, bullets } for the published-look preview.
+// Markdown-aware: handles "Slide 1:", "**Slide 1:**", "## Slide 1", "Slide 1 —", etc.
 function parseCarouselSlides(text) {
-  const body = text.replace(/\[SLIDE IMAGES\][\s\S]*$/i, "").trim();
+  // Keep only the slide copy — drop the SLIDE IMAGES description block.
+  const body = text.split(SLIDE_MARKER)[0].trim();
   const slides = [];
-  const re = /Slide\s+(\d+)\s*[:.\-–]?\s*([\s\S]*?)(?=\n\s*Slide\s+\d+\b|$)/gi;
+  const re = /[*_#>\s]*Slide\s+(\d+)\s*[*_]*\s*[:.\-–]?\s*([\s\S]*?)(?=\n[*_#>\s]*Slide\s+\d+\b|$)/gi;
   let m;
   while ((m = re.exec(body)) !== null) {
-    const lines = m[2].trim().split("\n").map(l => l.trim()).filter(Boolean);
-    const title = (lines[0] || "").replace(/^\*+|\*+$/g, "").trim();
-    const bullets = lines.slice(1).map(l => l.replace(/^[-•*]\s*/, "").trim());
+    const lines = m[2].trim().split("\n")
+      .map(l => l.replace(/^[#>\s]+/, "").replace(/\*+/g, "").trim())
+      .filter(Boolean);
+    const title = lines[0] || "";
+    const bullets = lines.slice(1).map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
     slides.push({ num: parseInt(m[1], 10), title, bullets });
   }
   return slides;
@@ -298,7 +302,7 @@ export default function LyricWorkstation({ orgId }) {
                               return (
                                 <div key={img.slide} style={{ position:"relative", flex:"0 0 100%", aspectRatio:"1 / 1", scrollSnapAlign:"start", background:"#000" }}>
                                   <img src={img.url} alt={`Slide ${img.slide}`} loading="lazy" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
-                                  <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.10) 38%, rgba(0,0,0,0.85) 100%)" }} />
+                                  <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.12) 28%, rgba(0,0,0,0.70) 58%, rgba(0,0,0,0.92) 100%)" }} />
                                   <div style={{ position:"absolute", top:12, right:12, fontSize:11, fontWeight:800, color:"#000", background:GREEN, padding:"3px 9px", borderRadius:20 }}>{img.slide}/{carouselImages.length}</div>
                                   <div style={{ position:"absolute", left:0, right:0, bottom:0, padding:"22px 22px 24px" }}>
                                     {slide?.title && <div style={{ fontSize:21, fontWeight:900, color:"#fff", lineHeight:1.22, textShadow:"0 2px 10px rgba(0,0,0,0.75)", marginBottom: slide.bullets.length?12:0 }}>{slide.title}</div>}
