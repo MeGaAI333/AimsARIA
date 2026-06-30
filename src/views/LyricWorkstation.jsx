@@ -96,6 +96,95 @@ function parseCarouselSlides(text) {
 
 const platIcon = { "All Platforms":"🌐", Facebook:"📘", Instagram:"📸", LinkedIn:"💼" };
 const typeIcon = { Post:"📝", "Reel Script":"🎬", Carousel:"🎠", Email:"📧", Newsletter:"📰", "Blog Post":"✍️" };
+
+const BRAND_PRESETS = ["#39FF14", "#FF0080", "#00B4FF", "#A855F7", "#F59E0B", "#FF4D4D"];
+
+// Pick black or white text for legibility against a given background color.
+function readableText(hex) {
+  const h = (hex || "").replace("#", "");
+  if (h.length < 6) return "#0a0a0a";
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  return (0.299*r + 0.587*g + 0.114*b) > 150 ? "#0a0a0a" : "#ffffff";
+}
+
+// One finished carousel slide. style: "overlay" | "panel" | "split".
+function CarouselSlide({ img, slide, total, bizName, handle, topic, color, style }) {
+  const s = slide || { title:"", bullets:[] };
+  const isCover = img.slide === 1;
+  const isLast = img.slide === total;
+  const onColor = readableText(color);
+  const overlay = style === "overlay";
+  const split = style === "split";
+  const textColor = split ? onColor : overlay ? "#fff" : "#eef0f6";
+  const subColor = split ? onColor : "#cfd4e2";
+  const shadow = overlay ? "0 2px 14px rgba(0,0,0,0.7)" : "none";
+
+  const brandHeader = (
+    <>
+      <div style={{ position:"absolute", top:16, left:18, display:"flex", alignItems:"center", gap:7, zIndex:4 }}>
+        <div style={{ width:8, height:8, borderRadius:"50%", background:color, boxShadow:`0 0 10px ${color}` }} />
+        <span style={{ fontSize:11, fontWeight:800, color:"#fff", letterSpacing:1.5, textTransform:"uppercase", textShadow:"0 1px 4px rgba(0,0,0,0.7)" }}>{bizName}</span>
+      </div>
+      <div style={{ position:"absolute", top:14, right:16, fontSize:11, fontWeight:800, color:onColor, background:color, padding:"3px 10px", borderRadius:20, zIndex:4 }}>{img.slide}/{total}</div>
+    </>
+  );
+
+  const body = isCover ? (
+    <>
+      <div style={{ width:48, height:5, borderRadius:3, background:color, marginBottom:18 }} />
+      <div style={{ fontSize: overlay?33:27, fontWeight:900, color:textColor, lineHeight:1.1, letterSpacing:-0.5, textShadow:shadow }}>{s.title || topic}</div>
+      {s.bullets[0] && <div style={{ fontSize:15, fontWeight:600, color:subColor, marginTop:16, lineHeight:1.5, textShadow:shadow }}>{s.bullets[0]}</div>}
+      <div style={{ marginTop:22, alignSelf:"flex-start", display:"inline-flex", alignItems:"center", gap:8, background:color, color:onColor, padding:"9px 18px", borderRadius:30, fontSize:13, fontWeight:800 }}>Swipe →</div>
+    </>
+  ) : (
+    <>
+      {s.title && (
+        <div style={{ marginBottom:14 }}>
+          <div style={{ width:36, height:4, borderRadius:3, background:color, marginBottom:12 }} />
+          <div style={{ fontSize:23, fontWeight:900, color:textColor, lineHeight:1.16, letterSpacing:-0.3, textShadow:shadow }}>{s.title}</div>
+        </div>
+      )}
+      {s.bullets.map((b,i) => (
+        <div key={i} style={{ display:"flex", gap:11, alignItems:"flex-start", marginTop:i?13:0 }}>
+          <div style={{ width:7, height:7, borderRadius:"50%", background:color, marginTop:7, flexShrink:0 }} />
+          <span style={{ fontSize:15, fontWeight:600, color:textColor, lineHeight:1.45, textShadow:shadow }}>{b}</span>
+        </div>
+      ))}
+      {isLast && (
+        <div style={{ marginTop:20, alignSelf:"flex-start", display:"inline-flex", alignItems:"center", gap:8, background:color, color:onColor, padding:"10px 18px", borderRadius:30, fontSize:13, fontWeight:800 }}>{handle} →</div>
+      )}
+    </>
+  );
+
+  if (overlay) {
+    return (
+      <div style={{ position:"relative", flex:"0 0 100%", aspectRatio:"1 / 1", scrollSnapAlign:"start", background:C.bg, overflow:"hidden" }}>
+        <img src={img.url} alt="" loading="lazy" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
+        <div style={{ position:"absolute", inset:0, background:"linear-gradient(165deg, rgba(8,11,28,0.40) 0%, rgba(8,11,28,0.74) 52%, rgba(8,11,28,0.95) 100%)" }} />
+        <div style={{ position:"absolute", top:-70, right:-70, width:200, height:200, borderRadius:"50%", background:`radial-gradient(circle, ${color}40, transparent 70%)` }} />
+        {brandHeader}
+        <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", justifyContent:isCover?"center":"flex-end", padding:isCover?"40px 32px":"30px 28px", zIndex:2 }}>
+          {body}
+        </div>
+      </div>
+    );
+  }
+
+  // panel & split: image on top, solid text panel below
+  return (
+    <div style={{ position:"relative", flex:"0 0 100%", aspectRatio:"1 / 1", scrollSnapAlign:"start", background:C.bg, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+      <div style={{ position:"relative", height:isCover?"44%":"50%", flexShrink:0 }}>
+        <img src={img.url} alt="" loading="lazy" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
+        <div style={{ position:"absolute", inset:0, background:`linear-gradient(to bottom, rgba(8,11,28,0.25), transparent 55%, ${split?color:C.card})` }} />
+        {brandHeader}
+      </div>
+      <div style={{ flex:1, background:split?color:C.card, padding:"24px 26px 26px", display:"flex", flexDirection:"column", justifyContent:isCover?"center":"flex-start", overflow:"hidden" }}>
+        {body}
+      </div>
+    </div>
+  );
+}
+
 export default function LyricWorkstation({ orgId }) {
   const [tab, setTab]               = useState("create");
   const [platform, setPlatform]     = useState("All Platforms");
@@ -110,6 +199,8 @@ export default function LyricWorkstation({ orgId }) {
   const [loading, setLoading]       = useState(false);
   const [copied, setCopied]         = useState(false);
   const [profile, setProfile]       = useState(null);
+  const [templateStyle, setTemplateStyle] = useState("overlay");
+  const [brandColor, setBrandColor] = useState(GREEN);
 
   useEffect(() => {
     if (!orgId) return;
@@ -128,6 +219,18 @@ export default function LyricWorkstation({ orgId }) {
       }
     }).catch(() => {});
   }, [orgId]);
+
+  // Remember each client's brand color locally so their carousels stay on-brand.
+  useEffect(() => {
+    if (!orgId) return;
+    const saved = localStorage.getItem(`lyric_brand_${orgId}`);
+    if (saved) setBrandColor(saved);
+  }, [orgId]);
+
+  const changeBrandColor = (c) => {
+    setBrandColor(c);
+    if (orgId) localStorage.setItem(`lyric_brand_${orgId}`, c);
+  };
 
   const generate = async () => {
     if (!topic.trim()) return;
@@ -238,10 +341,35 @@ export default function LyricWorkstation({ orgId }) {
                 style={{ width:"100%", padding:"10px", borderRadius:7, background:C.card, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:12, resize:"vertical", outline:"none", marginBottom:20, lineHeight:1.5 }} />
 
               <div style={{ fontSize:11, fontWeight:800, color:C.textMuted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Tone</div>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:24 }}>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:20 }}>
                 {TONES.map(t => (
                   <button key={t} onClick={() => setTone(t)} style={{ padding:"4px 10px", borderRadius:20, border:`1px solid ${tone===t?GREEN:C.border}`, background:tone===t?`${GREEN}15`:"transparent", color:tone===t?GREEN:C.textMuted, fontSize:10, fontWeight:700, cursor:"pointer" }}>{t}</button>
                 ))}
+              </div>
+
+              {contentType === "Carousel" && (
+                <>
+                  <div style={{ fontSize:11, fontWeight:800, color:C.textMuted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Template</div>
+                  <div style={{ display:"flex", gap:6, marginBottom:20 }}>
+                    {[["overlay","Overlay"],["panel","Panel"],["split","Split"]].map(([v,l]) => (
+                      <button key={v} onClick={() => setTemplateStyle(v)}
+                        style={{ flex:1, padding:"7px 0", borderRadius:7, border:`1px solid ${templateStyle===v?GREEN:C.border}`, background:templateStyle===v?`${GREEN}15`:"transparent", color:templateStyle===v?GREEN:C.textSecondary, fontSize:11, fontWeight:700, cursor:"pointer" }}>{l}</button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <div style={{ fontSize:11, fontWeight:800, color:C.textMuted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Brand Color</div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:8, alignItems:"center", marginBottom:24 }}>
+                {BRAND_PRESETS.map(c => (
+                  <button key={c} onClick={() => changeBrandColor(c)} title={c}
+                    style={{ width:24, height:24, borderRadius:"50%", background:c, border:brandColor.toLowerCase()===c.toLowerCase()?"2px solid #fff":`2px solid ${C.border}`, cursor:"pointer", boxShadow:brandColor.toLowerCase()===c.toLowerCase()?`0 0 0 2px ${c}`:"none", padding:0 }} />
+                ))}
+                <label style={{ display:"inline-flex", alignItems:"center", gap:5, cursor:"pointer" }} title="Custom color">
+                  <input type="color" value={brandColor} onChange={e => changeBrandColor(e.target.value)}
+                    style={{ width:26, height:26, border:"none", background:"transparent", cursor:"pointer", padding:0 }} />
+                  <span style={{ fontSize:10, color:C.textMuted }}>Custom</span>
+                </label>
               </div>
 
               <button onClick={generate} disabled={!topic.trim()||loading}
@@ -286,7 +414,7 @@ export default function LyricWorkstation({ orgId }) {
                       <div style={{ borderRadius:16, overflow:"hidden", border:`1px solid ${C.border}`, background:"#fff", boxShadow:"0 10px 34px rgba(0,0,0,0.35)" }}>
                         {/* Post header */}
                         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px" }}>
-                          <div style={{ width:38, height:38, borderRadius:"50%", background:`linear-gradient(135deg, ${GREEN}, ${C.primary})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:"#fff", flexShrink:0 }}>
+                          <div style={{ width:38, height:38, borderRadius:"50%", background:`linear-gradient(135deg, ${brandColor}, ${C.primary})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:"#fff", flexShrink:0 }}>
                             {bizName.charAt(0).toUpperCase()}
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
@@ -299,55 +427,13 @@ export default function LyricWorkstation({ orgId }) {
                         {/* Visual */}
                         {carouselImages.length > 0 ? (
                           <div style={{ display:"flex", overflowX:"auto", scrollSnapType:"x mandatory" }}>
-                            {carouselImages.map(img => {
-                              const slide = carouselSlides.find(s => s.num === img.slide) || { title:"", bullets:[] };
-                              const isCover = img.slide === 1;
-                              const isLast = img.slide === carouselImages.length;
-                              return (
-                                <div key={img.slide} style={{ position:"relative", flex:"0 0 100%", aspectRatio:"1 / 1", scrollSnapAlign:"start", background:C.bg, overflow:"hidden" }}>
-                                  {/* image + branded gradient */}
-                                  <img src={img.url} alt="" loading="lazy" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
-                                  <div style={{ position:"absolute", inset:0, background:`linear-gradient(165deg, rgba(8,11,28,0.38) 0%, rgba(8,11,28,0.74) 52%, rgba(8,11,28,0.95) 100%)` }} />
-                                  <div style={{ position:"absolute", top:-70, right:-70, width:200, height:200, borderRadius:"50%", background:`radial-gradient(circle, ${GREEN}45, transparent 70%)` }} />
-
-                                  {/* brand + counter */}
-                                  <div style={{ position:"absolute", top:16, left:18, display:"flex", alignItems:"center", gap:7 }}>
-                                    <div style={{ width:8, height:8, borderRadius:"50%", background:GREEN, boxShadow:`0 0 10px ${GREEN}` }} />
-                                    <span style={{ fontSize:11, fontWeight:800, color:"#fff", letterSpacing:1.5, textTransform:"uppercase" }}>{bizName}</span>
-                                  </div>
-                                  <div style={{ position:"absolute", top:14, right:16, fontSize:11, fontWeight:800, color:"#0a0a0a", background:GREEN, padding:"3px 10px", borderRadius:20 }}>{img.slide}/{carouselImages.length}</div>
-
-                                  {/* COVER slide — big centered hook */}
-                                  {isCover ? (
-                                    <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", justifyContent:"center", padding:"40px 32px" }}>
-                                      <div style={{ width:48, height:5, borderRadius:3, background:GREEN, marginBottom:20 }} />
-                                      <div style={{ fontSize:34, fontWeight:900, color:"#fff", lineHeight:1.08, letterSpacing:-0.6, textShadow:"0 3px 20px rgba(0,0,0,0.65)" }}>{slide.title || topic}</div>
-                                      {slide.bullets[0] && <div style={{ fontSize:15, fontWeight:600, color:"#cfd4e2", marginTop:18, lineHeight:1.5 }}>{slide.bullets[0]}</div>}
-                                      <div style={{ marginTop:26, alignSelf:"flex-start", display:"inline-flex", alignItems:"center", gap:8, background:GREEN, color:"#0a0a0a", padding:"9px 18px", borderRadius:30, fontSize:13, fontWeight:800 }}>Swipe →</div>
-                                    </div>
-                                  ) : (
-                                    /* CONTENT / CTA slide — headline + bullets */
-                                    <div style={{ position:"absolute", left:0, right:0, bottom:0, padding:"30px 28px 30px" }}>
-                                      {slide.title && (
-                                        <div style={{ marginBottom:16 }}>
-                                          <div style={{ width:36, height:4, borderRadius:3, background:GREEN, marginBottom:12 }} />
-                                          <div style={{ fontSize:24, fontWeight:900, color:"#fff", lineHeight:1.16, letterSpacing:-0.3, textShadow:"0 2px 14px rgba(0,0,0,0.7)" }}>{slide.title}</div>
-                                        </div>
-                                      )}
-                                      {slide.bullets.map((b, i) => (
-                                        <div key={i} style={{ display:"flex", gap:11, alignItems:"flex-start", marginTop:i?13:0 }}>
-                                          <div style={{ width:7, height:7, borderRadius:"50%", background:GREEN, marginTop:7, flexShrink:0, boxShadow:`0 0 8px ${GREEN}` }} />
-                                          <span style={{ fontSize:15, fontWeight:600, color:"#eef0f6", lineHeight:1.45, textShadow:"0 1px 8px rgba(0,0,0,0.9)" }}>{b}</span>
-                                        </div>
-                                      ))}
-                                      {isLast && (
-                                        <div style={{ marginTop:20, display:"inline-flex", alignItems:"center", gap:8, background:GREEN, color:"#0a0a0a", padding:"10px 18px", borderRadius:30, fontSize:13, fontWeight:800 }}>{handle} →</div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
+                            {carouselImages.map(img => (
+                              <CarouselSlide key={img.slide} img={img}
+                                slide={carouselSlides.find(s => s.num === img.slide)}
+                                total={carouselImages.length}
+                                bizName={bizName} handle={handle} topic={topic}
+                                color={brandColor} style={templateStyle} />
+                            ))}
                           </div>
                         ) : imageUrl ? (
                           <img src={imageUrl} alt="visual" onLoad={() => setImageLoaded(true)}
