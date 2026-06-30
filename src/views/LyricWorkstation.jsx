@@ -61,6 +61,21 @@ function imgUrl(prompt, square = false) {
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?${dims}&nologo=true&model=flux&seed=${seed}`;
 }
 
+// Split carousel copy into per-slide { num, title, bullets } for the published-look preview.
+function parseCarouselSlides(text) {
+  const body = text.replace(/\[SLIDE IMAGES\][\s\S]*$/i, "").trim();
+  const slides = [];
+  const re = /Slide\s+(\d+)\s*[:.\-–]?\s*([\s\S]*?)(?=\n\s*Slide\s+\d+\b|$)/gi;
+  let m;
+  while ((m = re.exec(body)) !== null) {
+    const lines = m[2].trim().split("\n").map(l => l.trim()).filter(Boolean);
+    const title = (lines[0] || "").replace(/^\*+|\*+$/g, "").trim();
+    const bullets = lines.slice(1).map(l => l.replace(/^[-•*]\s*/, "").trim());
+    slides.push({ num: parseInt(m[1], 10), title, bullets });
+  }
+  return slides;
+}
+
 const platIcon = { "All Platforms":"🌐", Facebook:"📘", Instagram:"📸", LinkedIn:"💼" };
 const typeIcon = { Post:"📝", "Reel Script":"🎬", Carousel:"🎠", Email:"📧", Newsletter:"📰", "Blog Post":"✍️" };
 export default function LyricWorkstation({ orgId }) {
@@ -135,6 +150,12 @@ export default function LyricWorkstation({ orgId }) {
     .replace(/\[IMAGE PROMPT\][:\s]+.+(\n|$)/i, "")
     .replace(/\[SLIDE IMAGES\][\s\S]*$/i, "")
     .trim();
+
+  const carouselSlides = carouselImages.length > 0 ? parseCarouselSlides(generated) : [];
+  const bizName = profile?.business_name || "Your Business";
+  const handle = "@" + (profile?.business_name || "yourbusiness").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const isSocial = ["Post", "Reel Script", "Carousel"].includes(contentType);
+  const platformLabel = platform === "All Platforms" ? "Instagram" : platform;
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden" }}>
@@ -240,55 +261,81 @@ export default function LyricWorkstation({ orgId }) {
                       </div>
                     </div>
 
-                    {/* Carousel — one visual per slide */}
-                    {carouselImages.length > 0 && (
-                      <div style={{ marginBottom:20, borderRadius:12, overflow:"hidden", border:`1px solid ${GREEN}30`, background:C.card }}>
-                        <div style={{ fontSize:10, fontWeight:800, color:GREEN, textTransform:"uppercase", letterSpacing:1, padding:"10px 14px", borderBottom:`1px solid ${C.border}`, background:C.surface }}>
-                          🖼 AI-Generated Slide Visuals · {carouselImages.length} slides
+                    {/* Published Preview — the finished piece as it will appear */}
+                    <div style={{ maxWidth:480, margin:"0 auto" }}>
+                      <div style={{ borderRadius:16, overflow:"hidden", border:`1px solid ${C.border}`, background:"#fff", boxShadow:"0 10px 34px rgba(0,0,0,0.35)" }}>
+                        {/* Post header */}
+                        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px" }}>
+                          <div style={{ width:38, height:38, borderRadius:"50%", background:`linear-gradient(135deg, ${GREEN}, ${C.primary})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:"#fff", flexShrink:0 }}>
+                            {bizName.charAt(0).toUpperCase()}
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:13, fontWeight:700, color:"#111" }}>{bizName}</div>
+                            <div style={{ fontSize:11, color:"#888" }}>{handle} · {platformLabel}</div>
+                          </div>
+                          <span style={{ fontSize:18, color:"#888" }}>⋯</span>
                         </div>
-                        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:12, padding:14 }}>
-                          {carouselImages.map(img => (
-                            <div key={img.slide} style={{ borderRadius:10, overflow:"hidden", border:`1px solid ${C.border}`, background:C.surface }}>
-                              <div style={{ fontSize:10, fontWeight:800, color:GREEN, padding:"6px 10px", borderBottom:`1px solid ${C.border}` }}>Slide {img.slide}</div>
-                              <img src={img.url} alt={`Slide ${img.slide} visual`} loading="lazy"
-                                style={{ width:"100%", aspectRatio:"1 / 1", display:"block", objectFit:"cover" }} />
-                              <div style={{ padding:"6px 10px", display:"flex", justifyContent:"flex-end" }}>
-                                <a href={img.url} download={`lyric-slide-${img.slide}.jpg`} target="_blank" rel="noreferrer"
-                                  style={{ fontSize:10, fontWeight:700, color:GREEN, textDecoration:"none" }}>↓ Download</a>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
 
-                    {/* Generated Image (single — non-carousel) */}
-                    {imageUrl && carouselImages.length === 0 && (
-                      <div style={{ marginBottom:20, borderRadius:12, overflow:"hidden", border:`1px solid ${GREEN}30`, background:C.card, position:"relative" }}>
-                        <div style={{ fontSize:10, fontWeight:800, color:GREEN, textTransform:"uppercase", letterSpacing:1, padding:"10px 14px", borderBottom:`1px solid ${C.border}`, background:C.surface }}>
-                          🖼 AI-Generated Visual
-                          {!imageLoaded && <span style={{ marginLeft:8, color:C.textMuted, fontWeight:400 }}>Generating…</span>}
-                        </div>
-                        <img
-                          src={imageUrl}
-                          alt="AI generated visual"
-                          onLoad={() => setImageLoaded(true)}
-                          style={{ width:"100%", display:"block", maxHeight:400, objectFit:"cover", opacity:imageLoaded?1:0.3, transition:"opacity .5s" }}
-                        />
-                        {imageLoaded && (
-                          <div style={{ padding:"8px 14px", display:"flex", justifyContent:"flex-end", gap:8 }}>
-                            <a href={imageUrl} download="lyric-visual.jpg" target="_blank" rel="noreferrer"
-                              style={{ padding:"5px 12px", borderRadius:6, border:`1px solid ${GREEN}`, background:`${GREEN}15`, color:GREEN, fontSize:11, fontWeight:700, cursor:"pointer", textDecoration:"none" }}>
-                              ↓ Download
-                            </a>
+                        {/* Visual */}
+                        {carouselImages.length > 0 ? (
+                          <div style={{ display:"flex", overflowX:"auto", scrollSnapType:"x mandatory" }}>
+                            {carouselImages.map(img => {
+                              const slide = carouselSlides.find(s => s.num === img.slide);
+                              return (
+                                <div key={img.slide} style={{ position:"relative", flex:"0 0 100%", aspectRatio:"1 / 1", scrollSnapAlign:"start", background:"#000" }}>
+                                  <img src={img.url} alt={`Slide ${img.slide}`} loading="lazy" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
+                                  <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.10) 38%, rgba(0,0,0,0.85) 100%)" }} />
+                                  <div style={{ position:"absolute", top:12, right:12, fontSize:11, fontWeight:800, color:"#000", background:GREEN, padding:"3px 9px", borderRadius:20 }}>{img.slide}/{carouselImages.length}</div>
+                                  <div style={{ position:"absolute", left:0, right:0, bottom:0, padding:"22px 22px 24px" }}>
+                                    {slide?.title && <div style={{ fontSize:21, fontWeight:900, color:"#fff", lineHeight:1.22, textShadow:"0 2px 10px rgba(0,0,0,0.75)", marginBottom: slide.bullets.length?12:0 }}>{slide.title}</div>}
+                                    {slide?.bullets?.map((b, i) => (
+                                      <div key={i} style={{ display:"flex", gap:8, fontSize:14, fontWeight:600, color:"#f4f4f4", lineHeight:1.5, textShadow:"0 1px 8px rgba(0,0,0,0.85)", marginTop:i?6:0 }}>
+                                        <span style={{ color:GREEN }}>•</span><span>{b}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : imageUrl ? (
+                          <img src={imageUrl} alt="visual" onLoad={() => setImageLoaded(true)}
+                            style={{ width:"100%", display:"block", aspectRatio:isSocial?"1 / 1":"1.91 / 1", objectFit:"cover", opacity:imageLoaded?1:0.3, transition:"opacity .5s" }} />
+                        ) : null}
+
+                        {/* Engagement bar (social only) */}
+                        {isSocial && (
+                          <div style={{ display:"flex", alignItems:"center", gap:16, padding:"10px 14px 2px", fontSize:20 }}>
+                            <span>♡</span><span>💬</span><span>➤</span>
+                            {carouselImages.length > 1 && <span style={{ marginLeft:"auto", fontSize:11, color:"#888" }}>← swipe {carouselImages.length} slides →</span>}
                           </div>
                         )}
-                      </div>
-                    )}
 
-                    {/* Generated Text */}
-                    <div style={{ background:C.card, border:`1px solid ${GREEN}25`, borderRadius:10, padding:24 }}>
-                      <pre style={{ margin:0, fontFamily:"inherit", fontSize:13, color:C.textPrimary, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{displayText}</pre>
+                        {/* Caption / body */}
+                        <div style={{ padding:isSocial?"6px 14px 16px":"14px 16px 18px" }}>
+                          {isSocial && <span style={{ fontSize:13, fontWeight:700, color:"#111", marginRight:6 }}>{handle}</span>}
+                          <span style={{ fontSize:13, color:"#222", lineHeight:1.6, whiteSpace:"pre-wrap" }}>
+                            {carouselImages.length > 0 ? topic : displayText}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Asset downloads under the preview */}
+                      <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:12, justifyContent:"center" }}>
+                        {carouselImages.length > 0
+                          ? carouselImages.map(img => (
+                              <a key={img.slide} href={img.url} download={`lyric-slide-${img.slide}.jpg`} target="_blank" rel="noreferrer"
+                                style={{ fontSize:11, fontWeight:700, color:GREEN, textDecoration:"none", border:`1px solid ${GREEN}`, background:`${GREEN}12`, padding:"5px 10px", borderRadius:6 }}>
+                                ↓ Slide {img.slide}
+                              </a>
+                            ))
+                          : imageUrl && (
+                              <a href={imageUrl} download="lyric-visual.jpg" target="_blank" rel="noreferrer"
+                                style={{ fontSize:11, fontWeight:700, color:GREEN, textDecoration:"none", border:`1px solid ${GREEN}`, background:`${GREEN}12`, padding:"5px 12px", borderRadius:6 }}>
+                                ↓ Download Visual
+                              </a>
+                            )}
+                      </div>
                     </div>
                   </div>
                 )}
