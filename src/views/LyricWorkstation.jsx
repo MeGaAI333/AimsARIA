@@ -16,7 +16,7 @@ function buildPrompt({ platform, contentType, industry, topic, tone, profile }) 
   const brandToneStr = profile?.brand_tone ? (Array.isArray(profile.brand_tone) ? profile.brand_tone.join(", ") : profile.brand_tone) : "";
   const profileCtx = profile ? `\n\nCLIENT PROFILE:\nBusiness: ${profile.business_name||""}\nService Area: ${profile.service_area||""}\nTarget Audience: ${profile.target_audience||""}\nContent Pillars: ${profile.content_pillars||""}\nBrand Tone: ${brandToneStr}\nContent Restrictions: ${profile.restrictions||""}\nRequired Hashtags: ${profile.hashtags||""}\nKey Pain Points: ${profile.pain_points||""}` : "";
   const base = `You are LYRIC — AIMS AI's Content & Brand Voice agent. Write in LYRIC's voice: authoritative but never corporate, industry-fluent, and every piece ends with a clear CTA.\n\nIndustry: ${industry}\nGoal/Topic: ${topic}\nTone: ${tone}\nPlatform: ${platformStr}${profileCtx}\n\n`;
-  const imgNote = `\n\n[IMAGE PROMPT]: Write a single sentence describing a professional marketing visual to accompany this content. Be specific about the scene, style, and mood.`;
+  const imgNote = `\n\nIMAGE PROMPT: On a single plain-text line (no markdown, no asterisks), describe a professional marketing photo that literally depicts the MAIN subject of the copy above — the specific scene, people, or product being discussed, not a generic stock image. One vivid sentence.`;
 
   // Carousels get one visual PER slide, each matched to that slide's specific message.
   const carouselImgNote = `\n\n[SLIDE IMAGES]\nAfter the slides, list exactly one image description per slide. Each must be a single vivid sentence describing a professional marketing visual that directly matches THAT slide's specific message (not a generic brand photo). Format exactly as:\n1: <visual for slide 1>\n2: <visual for slide 2>\n3: <visual for slide 3>\n4: <visual for slide 4>\n5: <visual for slide 5>\n6: <visual for slide 6>\n7: <visual for slide 7>`;
@@ -36,20 +36,32 @@ function buildPrompt({ platform, contentType, industry, topic, tone, profile }) 
   return base + `Write compelling ${contentType} content.` + imgNote;
 }
 
+// Matches the image-prompt marker in any form the model emits:
+// [IMAGE PROMPT]:, **IMAGE PROMPT:**, IMAGE PROMPT -, IMAGE_PROMPT:, etc.
+const IMG_MARKER = /[*_#>\s]*\[?\s*IMAGE[ _]?PROMPT\s*\]?[*_]*\s*[:：-]?\s*/i;
+const SLIDE_MARKER = /[*_#>\s]*\[?\s*SLIDE[ _]?IMAGES\s*\]?[*_]*\s*[:：-]?\s*/i;
+
+function cleanPrompt(s) {
+  return s.replace(/[*_`#>]/g, "").replace(/\s+/g, " ").trim();
+}
+
 function extractImagePrompt(text, industry, tone) {
-  const match = text.match(/\[IMAGE PROMPT\][:\s]+(.+?)(?:\n|$)/i);
-  const base = match ? match[1].trim() : `Professional ${industry} business marketing photo, ${tone.toLowerCase()} style`;
+  // Capture from the marker up to a blank line, a --- rule, or end of text.
+  const re = new RegExp(IMG_MARKER.source + "([\\s\\S]+?)(?:\\n\\s*\\n|\\n\\s*-{3,}|$)", "i");
+  const match = text.match(re);
+  const base = match && cleanPrompt(match[1]) ? cleanPrompt(match[1])
+    : `Professional ${industry} business marketing photo, ${tone.toLowerCase()} style`;
   return `${base}, commercial photography, high quality, cinematic lighting, professional`;
 }
 
-// Parse the per-slide image descriptions from the [SLIDE IMAGES] section of a carousel.
+// Parse the per-slide image descriptions from the SLIDE IMAGES section of a carousel.
 function extractCarouselImagePrompts(text, industry, tone) {
-  const section = text.split(/\[SLIDE IMAGES\][:\s]*/i)[1];
+  const section = text.split(SLIDE_MARKER)[1];
   const prompts = [];
   if (section) {
     for (const line of section.split("\n")) {
-      const m = line.match(/^\s*(\d+)\s*[:.)-]\s*(.+)$/);
-      if (m && m[2].trim()) prompts.push(m[2].trim());
+      const m = line.match(/^\s*(\d+)\s*[:.)\-]\s*(.+)$/);
+      if (m && cleanPrompt(m[2])) prompts.push(cleanPrompt(m[2]));
     }
   }
   return prompts.map(p => `${p}, commercial photography, high quality, cinematic lighting, professional`);
@@ -145,10 +157,12 @@ export default function LyricWorkstation({ orgId }) {
 
   const copy = () => { navigator.clipboard.writeText(generated); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
-  // Strip the [IMAGE PROMPT] line and the [SLIDE IMAGES] section from displayed text
+  // Remove the IMAGE PROMPT / SLIDE IMAGES blocks (both are appended after the copy)
+  // plus any leftover --- separators, so the caption is clean and publish-ready.
   const displayText = generated
-    .replace(/\[IMAGE PROMPT\][:\s]+.+(\n|$)/i, "")
-    .replace(/\[SLIDE IMAGES\][\s\S]*$/i, "")
+    .replace(new RegExp("\\n*" + IMG_MARKER.source + "[\\s\\S]*$", "i"), "")
+    .replace(new RegExp("\\n*" + SLIDE_MARKER.source + "[\\s\\S]*$", "i"), "")
+    .replace(/\n*\s*-{3,}\s*$/g, "")
     .trim();
 
   const carouselSlides = carouselImages.length > 0 ? parseCarouselSlides(generated) : [];
