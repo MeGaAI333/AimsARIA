@@ -18,11 +18,14 @@ function buildPrompt({ platform, contentType, industry, topic, tone, profile }) 
   const base = `You are LYRIC — AIMS AI's Content & Brand Voice agent. Write in LYRIC's voice: authoritative but never corporate, industry-fluent, and every piece ends with a clear CTA.\n\nIndustry: ${industry}\nGoal/Topic: ${topic}\nTone: ${tone}\nPlatform: ${platformStr}${profileCtx}\n\n`;
   const imgNote = `\n\n[IMAGE PROMPT]: Write a single sentence describing a professional marketing visual to accompany this content. Be specific about the scene, style, and mood.`;
 
+  // Carousels get one visual PER slide, each matched to that slide's specific message.
+  const carouselImgNote = `\n\n[SLIDE IMAGES]\nAfter the slides, list exactly one image description per slide. Each must be a single vivid sentence describing a professional marketing visual that directly matches THAT slide's specific message (not a generic brand photo). Format exactly as:\n1: <visual for slide 1>\n2: <visual for slide 2>\n3: <visual for slide 3>\n4: <visual for slide 4>\n5: <visual for slide 5>\n6: <visual for slide 6>\n7: <visual for slide 7>`;
+
   if (contentType === "Post") return base + `Write a single social media post for ${platformStr}. Include: a bold hook sentence, 2-3 value points, a strong CTA, and 3-5 relevant hashtags. Keep it under 280 words.` + imgNote;
 
   if (contentType === "Reel Script") return base + `Write a 45-60 second Reel/TikTok script for ${industry}. Format:\n[0:00-0:05] HOOK (on-screen text + spoken)\n[0:05-0:20] PROBLEM or INSIGHT\n[0:20-0:40] SOLUTION or VALUE\n[0:40-0:55] CTA\n[CAPTION]: Short caption with hashtags` + imgNote;
 
-  if (contentType === "Carousel") return base + `Write an Instagram/LinkedIn carousel for ${industry}. Create 7 slides:\nSlide 1: Title/Hook (big bold claim)\nSlides 2-6: One point each (title + 2-3 bullet points)\nSlide 7: CTA slide` + imgNote;
+  if (contentType === "Carousel") return base + `Write an Instagram/LinkedIn carousel for ${industry}. Create 7 slides:\nSlide 1: Title/Hook (big bold claim)\nSlides 2-6: One point each (title + 2-3 bullet points)\nSlide 7: CTA slide` + carouselImgNote;
 
   if (contentType === "Email") return base + `Write a marketing email for ${industry}.\nSUBJECT: (compelling subject line)\nPREVIEW TEXT: (30-50 chars)\nBODY:\n[Opening — personal/direct]\n[Problem or insight]\n[Solution/offer]\n[Social proof, 1 line]\n[CTA button text and link placeholder]\nKeep under 250 words.` + imgNote;
 
@@ -39,6 +42,25 @@ function extractImagePrompt(text, industry, tone) {
   return `${base}, commercial photography, high quality, cinematic lighting, professional`;
 }
 
+// Parse the per-slide image descriptions from the [SLIDE IMAGES] section of a carousel.
+function extractCarouselImagePrompts(text, industry, tone) {
+  const section = text.split(/\[SLIDE IMAGES\][:\s]*/i)[1];
+  const prompts = [];
+  if (section) {
+    for (const line of section.split("\n")) {
+      const m = line.match(/^\s*(\d+)\s*[:.)-]\s*(.+)$/);
+      if (m && m[2].trim()) prompts.push(m[2].trim());
+    }
+  }
+  return prompts.map(p => `${p}, commercial photography, high quality, cinematic lighting, professional`);
+}
+
+function imgUrl(prompt, square = false) {
+  const seed = Math.floor(Math.random() * 999999);
+  const dims = square ? "width=1080&height=1080" : "width=1200&height=630";
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?${dims}&nologo=true&model=flux&seed=${seed}`;
+}
+
 const platIcon = { "All Platforms":"🌐", Facebook:"📘", Instagram:"📸", LinkedIn:"💼" };
 const typeIcon = { Post:"📝", "Reel Script":"🎬", Carousel:"🎠", Email:"📧", Newsletter:"📰", "Blog Post":"✍️" };
 export default function LyricWorkstation({ orgId }) {
@@ -50,6 +72,7 @@ export default function LyricWorkstation({ orgId }) {
   const [tone, setTone]             = useState("Authoritative");
   const [generated, setGenerated]   = useState("");
   const [imageUrl, setImageUrl]     = useState("");
+  const [carouselImages, setCarouselImages] = useState([]);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loading, setLoading]       = useState(false);
   const [copied, setCopied]         = useState(false);
@@ -78,6 +101,7 @@ export default function LyricWorkstation({ orgId }) {
     setLoading(true);
     setGenerated("");
     setImageUrl("");
+    setCarouselImages([]);
     setImageLoaded(false);
     try {
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/call-claude`, {
@@ -89,18 +113,28 @@ export default function LyricWorkstation({ orgId }) {
       const text = data.content?.[0]?.text || (data.error ? `⚠️ ${data.error}` : "Error generating content.");
       setGenerated(text);
 
-      // Generate image from extracted prompt
-      const imgPrompt = extractImagePrompt(text, industry, tone);
-      const seed = Math.floor(Math.random() * 999999);
-      setImageUrl(`https://image.pollinations.ai/prompt/${encodeURIComponent(imgPrompt)}?width=1200&height=630&nologo=true&model=flux&seed=${seed}`);
+      if (contentType === "Carousel") {
+        // One visual per slide, each matched to that slide's content.
+        const slidePrompts = extractCarouselImagePrompts(text, industry, tone);
+        if (slidePrompts.length > 0) {
+          setCarouselImages(slidePrompts.map((p, i) => ({ slide: i + 1, url: imgUrl(p, true) })));
+        } else {
+          setImageUrl(imgUrl(extractImagePrompt(text, industry, tone)));
+        }
+      } else {
+        setImageUrl(imgUrl(extractImagePrompt(text, industry, tone)));
+      }
     } catch { setGenerated("⚠️ Connection error. Please try again."); }
     setLoading(false);
   };
 
   const copy = () => { navigator.clipboard.writeText(generated); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
-  // Strip the [IMAGE PROMPT] line from displayed text
-  const displayText = generated.replace(/\[IMAGE PROMPT\][:\s]+.+(\n|$)/i, "").trim();
+  // Strip the [IMAGE PROMPT] line and the [SLIDE IMAGES] section from displayed text
+  const displayText = generated
+    .replace(/\[IMAGE PROMPT\][:\s]+.+(\n|$)/i, "")
+    .replace(/\[SLIDE IMAGES\][\s\S]*$/i, "")
+    .trim();
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden" }}>
@@ -206,8 +240,30 @@ export default function LyricWorkstation({ orgId }) {
                       </div>
                     </div>
 
-                    {/* Generated Image */}
-                    {imageUrl && (
+                    {/* Carousel — one visual per slide */}
+                    {carouselImages.length > 0 && (
+                      <div style={{ marginBottom:20, borderRadius:12, overflow:"hidden", border:`1px solid ${GREEN}30`, background:C.card }}>
+                        <div style={{ fontSize:10, fontWeight:800, color:GREEN, textTransform:"uppercase", letterSpacing:1, padding:"10px 14px", borderBottom:`1px solid ${C.border}`, background:C.surface }}>
+                          🖼 AI-Generated Slide Visuals · {carouselImages.length} slides
+                        </div>
+                        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:12, padding:14 }}>
+                          {carouselImages.map(img => (
+                            <div key={img.slide} style={{ borderRadius:10, overflow:"hidden", border:`1px solid ${C.border}`, background:C.surface }}>
+                              <div style={{ fontSize:10, fontWeight:800, color:GREEN, padding:"6px 10px", borderBottom:`1px solid ${C.border}` }}>Slide {img.slide}</div>
+                              <img src={img.url} alt={`Slide ${img.slide} visual`} loading="lazy"
+                                style={{ width:"100%", aspectRatio:"1 / 1", display:"block", objectFit:"cover" }} />
+                              <div style={{ padding:"6px 10px", display:"flex", justifyContent:"flex-end" }}>
+                                <a href={img.url} download={`lyric-slide-${img.slide}.jpg`} target="_blank" rel="noreferrer"
+                                  style={{ fontSize:10, fontWeight:700, color:GREEN, textDecoration:"none" }}>↓ Download</a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Generated Image (single — non-carousel) */}
+                    {imageUrl && carouselImages.length === 0 && (
                       <div style={{ marginBottom:20, borderRadius:12, overflow:"hidden", border:`1px solid ${GREEN}30`, background:C.card, position:"relative" }}>
                         <div style={{ fontSize:10, fontWeight:800, color:GREEN, textTransform:"uppercase", letterSpacing:1, padding:"10px 14px", borderBottom:`1px solid ${C.border}`, background:C.surface }}>
                           🖼 AI-Generated Visual
