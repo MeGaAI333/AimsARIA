@@ -86,7 +86,9 @@ function parseCarouselSlides(text) {
       .map(l => l.replace(/^[#>\s]+/, "").replace(/\*+/g, "").trim())
       .filter(Boolean);
     const title = lines[0] || "";
-    const bullets = lines.slice(1).map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
+    const bullets = lines.slice(1)
+      .map(l => l.replace(/^[-•*]\s*/, "").trim())
+      .filter(b => b && !/^[-–—*•.\s]+$/.test(b));   // drop junk like "--", "—", empty
     slides.push({ num: parseInt(m[1], 10), title, bullets });
   }
   return slides;
@@ -298,20 +300,51 @@ export default function LyricWorkstation({ orgId }) {
                         {carouselImages.length > 0 ? (
                           <div style={{ display:"flex", overflowX:"auto", scrollSnapType:"x mandatory" }}>
                             {carouselImages.map(img => {
-                              const slide = carouselSlides.find(s => s.num === img.slide);
+                              const slide = carouselSlides.find(s => s.num === img.slide) || { title:"", bullets:[] };
+                              const isCover = img.slide === 1;
+                              const isLast = img.slide === carouselImages.length;
                               return (
-                                <div key={img.slide} style={{ position:"relative", flex:"0 0 100%", aspectRatio:"1 / 1", scrollSnapAlign:"start", background:"#000" }}>
-                                  <img src={img.url} alt={`Slide ${img.slide}`} loading="lazy" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
-                                  <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.12) 28%, rgba(0,0,0,0.70) 58%, rgba(0,0,0,0.92) 100%)" }} />
-                                  <div style={{ position:"absolute", top:12, right:12, fontSize:11, fontWeight:800, color:"#000", background:GREEN, padding:"3px 9px", borderRadius:20 }}>{img.slide}/{carouselImages.length}</div>
-                                  <div style={{ position:"absolute", left:0, right:0, bottom:0, padding:"22px 22px 24px" }}>
-                                    {slide?.title && <div style={{ fontSize:21, fontWeight:900, color:"#fff", lineHeight:1.22, textShadow:"0 2px 10px rgba(0,0,0,0.75)", marginBottom: slide.bullets.length?12:0 }}>{slide.title}</div>}
-                                    {slide?.bullets?.map((b, i) => (
-                                      <div key={i} style={{ display:"flex", gap:8, fontSize:14, fontWeight:600, color:"#f4f4f4", lineHeight:1.5, textShadow:"0 1px 8px rgba(0,0,0,0.85)", marginTop:i?6:0 }}>
-                                        <span style={{ color:GREEN }}>•</span><span>{b}</span>
-                                      </div>
-                                    ))}
+                                <div key={img.slide} style={{ position:"relative", flex:"0 0 100%", aspectRatio:"1 / 1", scrollSnapAlign:"start", background:C.bg, overflow:"hidden" }}>
+                                  {/* image + branded gradient */}
+                                  <img src={img.url} alt="" loading="lazy" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
+                                  <div style={{ position:"absolute", inset:0, background:`linear-gradient(165deg, rgba(8,11,28,0.38) 0%, rgba(8,11,28,0.74) 52%, rgba(8,11,28,0.95) 100%)` }} />
+                                  <div style={{ position:"absolute", top:-70, right:-70, width:200, height:200, borderRadius:"50%", background:`radial-gradient(circle, ${GREEN}45, transparent 70%)` }} />
+
+                                  {/* brand + counter */}
+                                  <div style={{ position:"absolute", top:16, left:18, display:"flex", alignItems:"center", gap:7 }}>
+                                    <div style={{ width:8, height:8, borderRadius:"50%", background:GREEN, boxShadow:`0 0 10px ${GREEN}` }} />
+                                    <span style={{ fontSize:11, fontWeight:800, color:"#fff", letterSpacing:1.5, textTransform:"uppercase" }}>{bizName}</span>
                                   </div>
+                                  <div style={{ position:"absolute", top:14, right:16, fontSize:11, fontWeight:800, color:"#0a0a0a", background:GREEN, padding:"3px 10px", borderRadius:20 }}>{img.slide}/{carouselImages.length}</div>
+
+                                  {/* COVER slide — big centered hook */}
+                                  {isCover ? (
+                                    <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", justifyContent:"center", padding:"40px 32px" }}>
+                                      <div style={{ width:48, height:5, borderRadius:3, background:GREEN, marginBottom:20 }} />
+                                      <div style={{ fontSize:34, fontWeight:900, color:"#fff", lineHeight:1.08, letterSpacing:-0.6, textShadow:"0 3px 20px rgba(0,0,0,0.65)" }}>{slide.title || topic}</div>
+                                      {slide.bullets[0] && <div style={{ fontSize:15, fontWeight:600, color:"#cfd4e2", marginTop:18, lineHeight:1.5 }}>{slide.bullets[0]}</div>}
+                                      <div style={{ marginTop:26, alignSelf:"flex-start", display:"inline-flex", alignItems:"center", gap:8, background:GREEN, color:"#0a0a0a", padding:"9px 18px", borderRadius:30, fontSize:13, fontWeight:800 }}>Swipe →</div>
+                                    </div>
+                                  ) : (
+                                    /* CONTENT / CTA slide — headline + bullets */
+                                    <div style={{ position:"absolute", left:0, right:0, bottom:0, padding:"30px 28px 30px" }}>
+                                      {slide.title && (
+                                        <div style={{ marginBottom:16 }}>
+                                          <div style={{ width:36, height:4, borderRadius:3, background:GREEN, marginBottom:12 }} />
+                                          <div style={{ fontSize:24, fontWeight:900, color:"#fff", lineHeight:1.16, letterSpacing:-0.3, textShadow:"0 2px 14px rgba(0,0,0,0.7)" }}>{slide.title}</div>
+                                        </div>
+                                      )}
+                                      {slide.bullets.map((b, i) => (
+                                        <div key={i} style={{ display:"flex", gap:11, alignItems:"flex-start", marginTop:i?13:0 }}>
+                                          <div style={{ width:7, height:7, borderRadius:"50%", background:GREEN, marginTop:7, flexShrink:0, boxShadow:`0 0 8px ${GREEN}` }} />
+                                          <span style={{ fontSize:15, fontWeight:600, color:"#eef0f6", lineHeight:1.45, textShadow:"0 1px 8px rgba(0,0,0,0.9)" }}>{b}</span>
+                                        </div>
+                                      ))}
+                                      {isLast && (
+                                        <div style={{ marginTop:20, display:"inline-flex", alignItems:"center", gap:8, background:GREEN, color:"#0a0a0a", padding:"10px 18px", borderRadius:30, fontSize:13, fontWeight:800 }}>{handle} →</div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
