@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { C, AGENTS, PIPELINE_STAGES } from "../data.js";
 import { AgentAvatar, SectionHeader } from "../components/utils.jsx";
-import { getContacts, addContact, updateContact } from "../lib/db.js";
+import { getContacts, addContact, updateContact, getAllCommunications } from "../lib/db.js";
 
 const STAGE_COLORS = { cold:C.textSecondary, contacted:"#00B4FF", qualified:C.primary, negotiating:C.amber, won:C.green, lost:C.red };
 
@@ -61,11 +61,15 @@ function AddLeadModal({ onClose, onSave }) {
 
 export default function Pipeline({ setSelectedLead, setActiveTab }) {
   const [contacts, setContacts] = useState([]);
+  const [communications, setCommunications] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [showAdd, setShowAdd]   = useState(false);
 
   useEffect(() => {
-    getContacts().then(d => { setContacts(d); setLoading(false); }).catch(()=>setLoading(false));
+    Promise.all([
+      getContacts().then(d => setContacts(d)),
+      getAllCommunications().catch(() => []).then(d => setCommunications(d || [])),
+    ]).then(() => setLoading(false)).catch(() => setLoading(false));
   }, []);
 
   const handleAdd = async (data) => {
@@ -102,6 +106,10 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
                 </div>
                 {stageLeads.map(lead => {
                   const a = AGENTS.find(ag => ag.id === lead.assigned_to);
+                  const leadComms = communications.filter(c => c.contact_id === lead.id);
+                  const calls = leadComms.filter(c => c.channel === "call").length;
+                  const texts = leadComms.filter(c => c.channel === "text").length;
+                  const emails = leadComms.filter(c => c.channel === "email").length;
                   return (
                     <div key={lead.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 11px", borderLeft:`3px solid ${a?.color||C.border}` }}>
                       <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary, marginBottom:2 }}>{lead.name}</div>
@@ -110,6 +118,13 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
                         <span style={{ fontSize:12, fontWeight:700, color:C.textPrimary }}>${Number(lead.value||0).toLocaleString()}</span>
                         <span style={{ fontSize:11, fontWeight:700, color:lead.score>=80?C.green:lead.score>=55?C.amber:C.red }}>{lead.score}</span>
                       </div>
+                      {(calls + texts + emails > 0) && (
+                        <div style={{ fontSize:9, color:C.amber, marginBottom:6, display:"flex", gap:3 }}>
+                          {calls > 0 && <span>☎️{calls}</span>}
+                          {texts > 0 && <span>💬{texts}</span>}
+                          {emails > 0 && <span>📧{emails}</span>}
+                        </div>
+                      )}
                       <select value={lead.stage} onChange={e=>moveStage(lead.id, e.target.value)}
                         style={{ width:"100%", padding:"4px 6px", borderRadius:5, border:`1px solid ${STAGE_COLORS[lead.stage]||C.border}`, background:C.surface, color:STAGE_COLORS[lead.stage]||C.textSecondary, fontSize:10, fontWeight:700, cursor:"pointer" }}>
                         {["cold","contacted","qualified","negotiating","won","lost"].map(s=><option key={s} value={s}>{s}</option>)}
