@@ -162,6 +162,174 @@ function BulkCampaignModal({ contacts, orgId, onClose, onSent }) {
   );
 }
 
+function parseCSV(text) {
+  const lines = text.split("\n").filter(l => l.trim());
+  if (lines.length < 2) return [];
+
+  const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+  const rows = lines.slice(1).map(line => {
+    const values = line.split(",").map(v => v.trim());
+    const row = {};
+    headers.forEach((h, i) => {
+      row[h] = values[i] || "";
+    });
+    return row;
+  });
+  return rows;
+}
+
+function ImportModal({ onClose, onImport }) {
+  const [fileContent, setFileContent] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [results, setResults] = useState(null);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setFileContent(event.target?.result || "");
+    };
+    reader.readAsText(file);
+  };
+
+  const doImport = async () => {
+    if (!fileContent.trim()) return;
+    setImporting(true);
+    try {
+      const rows = parseCSV(fileContent);
+      const imported = [];
+      const errors = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        try {
+          const row = rows[i];
+          const contact = {
+            name: row.name || row.contact_name || `Lead ${i + 1}`,
+            company: row.company || row.company_name || "",
+            email: row.email || "",
+            phone: row.phone || "",
+            industry: row.industry || "",
+            stage: row.stage || "cold",
+            value: Number(row.value || row.deal_value || 0) || 0,
+            score: Number(row.score || 50) || 50,
+            source: row.source || "import",
+            assigned_to: row.assigned_to || row.agent || "aria",
+            tags: [],
+            last_contact: new Date().toISOString(),
+          };
+
+          if (!contact.name.trim()) {
+            errors.push({ row: i + 2, error: "Missing name" });
+            continue;
+          }
+
+          const created = await addContact(contact);
+          imported.push(created);
+        } catch (e) {
+          errors.push({ row: i + 2, error: e.message });
+        }
+        setProgress(i + 1);
+      }
+
+      setResults({ imported: imported.length, errors, total: rows.length });
+    } catch (e) {
+      console.error("Import failed:", e);
+      setResults({ imported: 0, errors: [{ error: e.message }], total: 0 });
+    }
+    setImporting(false);
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ width:540, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28, maxHeight:"85vh", overflowY:"auto" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Import Leads from CSV</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+
+        {!results ? (
+          <>
+            <div style={{ marginBottom:20, padding:16, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:C.textMuted, marginBottom:12, textTransform:"uppercase" }}>Expected Columns</div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, fontSize:11, color:C.textSecondary }}>
+                <span>✓ name (required)</span>
+                <span>company</span>
+                <span>email</span>
+                <span>phone</span>
+                <span>industry</span>
+                <span>stage (cold/contacted/etc)</span>
+                <span>value ($)</span>
+                <span>score (1-100)</span>
+                <span>source</span>
+                <span>assigned_to (agent id)</span>
+              </div>
+            </div>
+
+            <div style={{ marginBottom:20 }}>
+              <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Upload CSV or Paste Data</label>
+              <div style={{ display:"flex", gap:10, marginBottom:12 }}>
+                <input type="file" accept=".csv" onChange={handleFileChange}
+                  style={{ flex:1, padding:"8px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:12, cursor:"pointer" }} />
+              </div>
+              <textarea value={fileContent} onChange={e => setFileContent(e.target.value)} placeholder="Or paste CSV data here (columns: name, company, email, phone, etc.)" rows={6}
+                style={{ width:"100%", padding:12, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.textPrimary, fontSize:12, fontFamily:"monospace", resize:"none", outline:"none", boxSizing:"border-box" }} />
+            </div>
+
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={onClose} disabled={importing} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>Cancel</button>
+              <button onClick={doImport} disabled={importing || !fileContent.trim()}
+                style={{ padding:"9px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", opacity:importing || !fileContent.trim() ? 0.6 : 1 }}>
+                {importing ? "Importing…" : "Import"}
+              </button>
+            </div>
+
+            {importing && (
+              <div style={{ marginTop:16, padding:12, background:C.surface, borderRadius:8 }}>
+                <div style={{ fontSize:12, color:C.textSecondary, marginBottom:8 }}>Processing CSV…</div>
+                <div style={{ width:"100%", height:4, background:C.border, borderRadius:20, overflow:"hidden" }}>
+                  <div style={{ height:"100%", background:C.primary, width:`${(progress / (fileContent.split("\n").length - 1)) * 100}%`, transition:"width 0.3s" }} />
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div style={{ marginBottom:20, padding:16, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary, marginBottom:12 }}>Import Results</div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+                <span style={{ color:C.green }}>✓ {results.imported} imported</span>
+                <span style={{ color:C.red }}>{results.errors.length} errors</span>
+              </div>
+              {results.errors.length > 0 && (
+                <div style={{ fontSize:11, color:C.textSecondary, maxHeight:150, overflowY:"auto" }}>
+                  {results.errors.slice(0, 10).map((err, i) => (
+                    <div key={i} style={{ padding:"4px 0", borderBottom:`1px solid ${C.border}` }}>
+                      {err.row ? `Row ${err.row}: ` : ""}{err.error}
+                    </div>
+                  ))}
+                  {results.errors.length > 10 && <div style={{ padding:"4px 0", color:C.textMuted }}>…and {results.errors.length - 10} more</div>}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={() => {
+                onImport(results.imported);
+                onClose();
+              }}
+                style={{ padding:"9px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                Done
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function exportToCSV(contacts, communications) {
   const contactsWithStats = contacts.map(c => {
     const comms = communications.filter(cm => cm.contact_id === c.id);
@@ -610,6 +778,7 @@ export default function CRM({ orgId }) {
   const [selected, setSelected] = useState(null);
   const [showAdd, setShowAdd]   = useState(false);
   const [showBulk, setShowBulk] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -672,6 +841,7 @@ export default function CRM({ orgId }) {
         </div>
         <div style={{ padding:14, borderTop:`1px solid ${C.border}`, background:C.surface, flexShrink:0, display:"flex", gap:8, flexDirection:"column" }}>
           <button onClick={() => setShowAdd(true)} style={{ width:"100%", padding:"9px 0", borderRadius:8, border:`1px solid ${C.primary}`, background:`${C.primary}15`, color:C.primary, fontSize:13, fontWeight:700, cursor:"pointer" }}>+ Add Contact</button>
+          <button onClick={() => setShowImport(true)} style={{ width:"100%", padding:"9px 0", borderRadius:8, border:`1px solid ${C.green}`, background:`${C.green}15`, color:C.green, fontSize:13, fontWeight:700, cursor:"pointer" }}>📥 Import CSV</button>
           {filtered.length > 0 && (
             <button onClick={() => setShowBulk(true)} style={{ width:"100%", padding:"9px 0", borderRadius:8, border:`1px solid ${C.amber}`, background:`${C.amber}15`, color:C.amber, fontSize:13, fontWeight:700, cursor:"pointer" }}>📢 Send to {filtered.length}</button>
           )}
@@ -685,6 +855,17 @@ export default function CRM({ orgId }) {
       )}
 
       {showAdd && <AddContactModal onClose={() => setShowAdd(false)} onSave={handleAddContact} />}
+      {showImport && (
+        <ImportModal
+          onClose={() => setShowImport(false)}
+          onImport={(count) => {
+            getContacts().then(data => {
+              setContacts(data);
+              alert(`✓ Successfully imported ${count} lead${count !== 1 ? 's' : ''}!`);
+            });
+          }}
+        />
+      )}
       {showBulk && (
         <BulkCampaignModal
           contacts={filtered}
