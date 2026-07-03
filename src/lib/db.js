@@ -245,3 +245,15 @@ export async function updateCommunicationStatus(logId, status, updates = {}) {
   if (error) throw error;
   return data;
 }
+
+export async function getAllCommunications() {
+  const orgId = await getOrgId();
+  const { data, error } = await supabase
+    .from("communication_logs")
+    .select("*")
+    .eq("org_id", orgId || "")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  return data || [];
+}

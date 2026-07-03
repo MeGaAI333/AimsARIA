@@ -2,14 +2,16 @@ import { useState, useEffect } from "react";
 import { C, AGENTS } from "../data.js";
 import { AgentAvatar, StatCard, PulsingDot, ChannelBadge, FlywheelBanner } from "../components/utils.jsx";
 import { supabase } from "../lib/supabase.js";
+import { getAllCommunications } from "../lib/db.js";
 
 function useDashboardData() {
   const [data, setData] = useState(null);
   useEffect(() => {
     async function load() {
-      const [{ data: contacts }, { data: events }] = await Promise.all([
+      const [{ data: contacts }, { data: events }, comms] = await Promise.all([
         supabase.from("contacts").select("id, name, company, stage, source, value, industry"),
         supabase.from("events").select("id, title, start_time, agent").order("start_time", { ascending: true }).limit(10),
+        getAllCommunications().catch(() => []),
       ]);
       const c = contacts || [];
       const e = events || [];
@@ -23,7 +25,12 @@ function useDashboardData() {
       const today = new Date().toDateString();
       const todayEvents = e.filter(ev => ev.start_time && new Date(ev.start_time).toDateString() === today);
 
-      setData({ active, won, recovery, hot, pipeline, revenue, todayEvents, totalContacts: c.length });
+      const todayComms = (comms || []).filter(cm => new Date(cm.created_at).toDateString() === today);
+      const callCount = todayComms.filter(cm => cm.channel === "call").length;
+      const textCount = todayComms.filter(cm => cm.channel === "text").length;
+      const emailCount = todayComms.filter(cm => cm.channel === "email").length;
+
+      setData({ active, won, recovery, hot, pipeline, revenue, todayEvents, totalContacts: c.length, todayComms, callCount, textCount, emailCount });
     }
     load();
   }, []);
@@ -53,7 +60,7 @@ export default function Dashboard({ setActiveTab, setSelectedLead }) {
         <StatCard label="Active Pipeline"      value={pipeline > 0 ? `$${(pipeline/1000).toFixed(0)}K` : "—"} sub={`${d?.active?.length ?? "—"} live deals`}    icon="📈" color={C.primary} />
         <StatCard label="Revenue Recovered"    value={revenue  > 0 ? `$${(revenue/1000).toFixed(0)}K`  : "—"} sub={`${d?.won?.length ?? "—"} deal(s) closed`}    icon="💰" color={C.green} />
         <StatCard label="Leads in Recovery"    value={recovery}                                                 sub="ARIA sequencing now"                             icon="🎯" color="#00B4FF" />
-        <StatCard label="Total Contacts"       value={d?.totalContacts ?? "—"}                                  sub="All stages"                                      icon="⚡" color="#FF6600" />
+        <StatCard label="Communications"       value={d?.todayComms?.length ?? "—"}                             sub={`☎️${d?.callCount || 0} 💬${d?.textCount || 0} 📧${d?.emailCount || 0} today`} icon="💬" color="#FF6B9D" />
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"1.5fr 1fr", gap:18 }}>

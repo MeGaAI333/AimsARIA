@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { C, AGENTS } from "../data.js";
 import { AgentAvatar, Badge, Btn, SectionHeader } from "../components/utils.jsx";
-import { getContacts, addContact, updateContact, deleteContact, getNotes, addNote, getAgentVoice, logCommunication, getCommunicationHistory, updateCommunicationStatus } from "../lib/db.js";
+import { getContacts, addContact, updateContact, deleteContact, getNotes, addNote, getAgentVoice, logCommunication, getCommunicationHistory, getAllCommunications, updateCommunicationStatus } from "../lib/db.js";
 import { supabase } from "../lib/supabase.js";
 
 const STAGE_COLOR = { cold:C.textSecondary, contacted:"#00B4FF", qualified:C.primary, negotiating:C.amber, won:C.green, lost:C.red };
@@ -18,11 +18,39 @@ function timeAgo(ts) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+const TEMPLATES = {
+  call: [
+    "Hi {{name}}, this is {{agent}} from AIMS. I wanted to follow up on {{company}}. Do you have a few minutes?",
+    "Hi {{name}}, I'm calling about the services we discussed for {{company}}. Are you available to chat?",
+    "Hi {{name}}, just checking in to see how things are going. Call me back when you get a chance!",
+  ],
+  text: [
+    "Hi {{name}}, AIMS here! Quick question about {{company}} – got 2 mins?",
+    "{{name}}, following up on our convo. Interested in learning more? Reply YES",
+    "Hi! Just wanted to touch base about {{company}}. Free for a quick call?",
+  ],
+  email: [
+    "Hi {{name}},\n\nHope this email finds you well! I wanted to follow up on {{company}}.\n\nBest regards,\nAIMS Team",
+    "Hi {{name}},\n\nJust checking in on the services we discussed for {{company}}. Happy to answer any questions!\n\nBest,\nAIMS",
+    "Hi {{name}},\n\nWould love to connect about {{company}} when you have a moment.\n\nLooking forward to hearing from you!",
+  ],
+};
+
 function ComposeModal({ contact, orgId, onClose, onSent }) {
   const [action, setAction] = useState("call"); // call | text | email
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const a = AGENTS.find(ag => ag.id === contact.assigned_to);
+
+  const applyTemplate = (template) => {
+    const filled = template
+      .replace(/{{name}}/g, contact.name.split(" ")[0])
+      .replace(/{{agent}}/g, a?.name || "an agent")
+      .replace(/{{company}}/g, contact.company || "your business");
+    setMessage(filled);
+    setShowTemplates(false);
+  };
 
   const send = async () => {
     if (!message.trim() || !contact.phone && action === "call") return;
@@ -96,9 +124,25 @@ function ComposeModal({ contact, orgId, onClose, onSent }) {
         </div>
 
         <div style={{ marginBottom:16 }}>
-          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>
-            {action === "call" ? "Call Script" : action === "text" ? "Message" : "Email Body"}
-          </label>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5 }}>
+              {action === "call" ? "Call Script" : action === "text" ? "Message" : "Email Body"}
+            </label>
+            <button onClick={() => setShowTemplates(!showTemplates)}
+              style={{ fontSize:10, fontWeight:700, color:C.primary, background:"transparent", border:"none", cursor:"pointer" }}>
+              📋 Templates
+            </button>
+          </div>
+          {showTemplates && (
+            <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:6, marginBottom:10, maxHeight:150, overflowY:"auto" }}>
+              {TEMPLATES[action].map((tmpl, i) => (
+                <div key={i} onClick={() => applyTemplate(tmpl)}
+                  style={{ padding:8, background:C.surface, border:`1px solid ${C.border}`, borderRadius:6, fontSize:11, color:C.textSecondary, cursor:"pointer", lineHeight:1.4 }}>
+                  {tmpl.slice(0, 80)}…
+                </div>
+              ))}
+            </div>
+          )}
           <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={
             action === "call" ? "What should the AI agent say?" :
             action === "text" ? "Text message content…" :
@@ -129,8 +173,11 @@ function ComposeModal({ contact, orgId, onClose, onSent }) {
   );
 }
 
-function ContactRow({ c, selected, onClick }) {
+function ContactRow({ c, selected, onClick, communications }) {
   const a = AGENTS.find(ag => ag.id === c.assigned_to);
+  const recentComms = communications.filter(com => com.contact_id === c.id).slice(0, 3);
+  const lastComm = communications.find(com => com.contact_id === c.id);
+
   return (
     <div onClick={onClick} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", cursor:"pointer", background:selected ? C.card:"transparent", borderBottom:`1px solid ${C.border}` }}
       onMouseEnter={e => !selected && (e.currentTarget.style.background = C.surface)}
@@ -141,11 +188,21 @@ function ContactRow({ c, selected, onClick }) {
       </div>
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontSize:13, fontWeight:600, color:C.textPrimary, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.name}</div>
-        <div style={{ fontSize:11, color:C.textSecondary }}>{c.company}</div>
+        <div style={{ fontSize:11, color:C.textSecondary, display:"flex", gap:6, alignItems:"center" }}>
+          <span>{c.company}</span>
+          {lastComm && <span style={{ color:C.textMuted }}>· {timeAgo(lastComm.created_at)}</span>}
+        </div>
       </div>
       <div style={{ textAlign:"right", flexShrink:0 }}>
         <div style={{ fontSize:11, fontWeight:700, color:STAGE_COLOR[c.stage]||C.textSecondary, textTransform:"capitalize" }}>{c.stage}</div>
         <div style={{ fontSize:10, color:C.textMuted }}>${Number(c.value||0).toLocaleString()}</div>
+        {recentComms.length > 0 && (
+          <div style={{ fontSize:10, color:C.amber, marginTop:3 }}>
+            {recentComms.map((com, i) => (
+              <span key={i}>{com.channel === "call" ? "☎️" : com.channel === "text" ? "💬" : "📧"}</span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -247,8 +304,8 @@ function ContactDetail({ contact, orgId, onClose, onStageChange }) {
           <div>
             {activity.length === 0 && <div style={{ fontSize:12, color:C.textMuted, textAlign:"center", marginTop:24 }}>No activity yet.</div>}
             {activity.map(log => {
-              const channelIcons = { call: "☎️", text: "💬", email: "📧" };
-              const statusColors = { sent: C.green, pending: C.amber, failed: C.red, completed: C.green };
+              const channelIcons = { call: "☎️", text: "💬", email: "📧", received: "📥" };
+              const statusColors = { sent: C.green, received: C.blue, pending: C.amber, failed: C.red, completed: C.green };
               return (
                 <div key={log.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:14, marginBottom:10 }}>
                   <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
@@ -256,14 +313,19 @@ function ContactDetail({ contact, orgId, onClose, onStageChange }) {
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
                         <div>
-                          <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary, textTransform:"capitalize" }}>{log.channel} via {log.agent_id.toUpperCase()}</div>
+                          <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary, textTransform:"capitalize" }}>
+                            {log.channel} {log.status === "received" ? "from" : "via"} {log.agent_id.toUpperCase()}
+                          </div>
                           <div style={{ fontSize:10, color:C.textMuted }}>{timeAgo(log.created_at)}</div>
                         </div>
                         <div style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"3px 10px", borderRadius:20, background:`${statusColors[log.status]}15`, border:`1px solid ${statusColors[log.status]}30` }}>
                           <span style={{ fontSize:10, fontWeight:700, color:statusColors[log.status], textTransform:"capitalize" }}>{log.status}</span>
                         </div>
                       </div>
-                      <p style={{ margin:0, fontSize:12, color:C.textSecondary, lineHeight:1.6 }}>{log.message}</p>
+                      <p style={{ margin:0, fontSize:12, color:C.textSecondary, lineHeight:1.6, marginBottom:8 }}>{log.message}</p>
+                      {log.external_id && log.channel === "call" && (
+                        <div style={{ fontSize:10, color:C.textMuted }}>Call ID: {log.external_id.slice(0, 8)}…</div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -380,6 +442,7 @@ function AddContactModal({ onClose, onSave }) {
 
 export default function CRM({ orgId }) {
   const [contacts, setContacts] = useState([]);
+  const [communications, setCommunications] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
   const [stageFilter, setStageFilter] = useState("all");
@@ -387,7 +450,10 @@ export default function CRM({ orgId }) {
   const [showAdd, setShowAdd]   = useState(false);
 
   useEffect(() => {
-    getContacts().then(data => { setContacts(data); setLoading(false); }).catch(() => setLoading(false));
+    Promise.all([
+      getContacts().then(data => setContacts(data)),
+      getAllCommunications().catch(() => []).then(data => setCommunications(data || [])),
+    ]).then(() => setLoading(false)).catch(() => setLoading(false));
   }, []);
 
   const handleAddContact = async (data) => {
@@ -428,7 +494,7 @@ export default function CRM({ orgId }) {
         <div style={{ flex:1, overflowY:"auto" }}>
           {loading && <div style={{ padding:32, textAlign:"center", fontSize:12, color:C.textMuted }}>Loading…</div>}
           {!loading && filtered.map(c => (
-            <ContactRow key={c.id} c={c} selected={selected?.id===c.id} onClick={() => setSelected(selected?.id===c.id?null:c)} />
+            <ContactRow key={c.id} c={c} selected={selected?.id===c.id} onClick={() => setSelected(selected?.id===c.id?null:c)} communications={communications} />
           ))}
           {!loading && filtered.length===0 && (
             <div style={{ padding:32, textAlign:"center", fontSize:12, color:C.textMuted }}>
