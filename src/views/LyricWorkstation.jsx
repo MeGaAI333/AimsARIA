@@ -99,6 +99,105 @@ const typeIcon = { Post:"📝", "Reel Script":"🎬", Carousel:"🎠", Email:"�
 
 const BRAND_PRESETS = ["#39FF14", "#FF0080", "#00B4FF", "#A855F7", "#F59E0B", "#FF4D4D"];
 
+function SchedulePostModal({ contentType, platform, topic, generated, onClose, onPublish, onSchedule }) {
+  const [mode, setMode] = useState(null); // null | "now" | "later"
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("09:00");
+  const [saving, setSaving] = useState(false);
+
+  const handlePublishNow = async () => {
+    setSaving(true);
+    await onPublish();
+    setSaving(false);
+    onClose();
+  };
+
+  const handleSchedule = async () => {
+    if (!scheduleDate) return;
+    setSaving(true);
+    await onSchedule(scheduleDate, scheduleTime);
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ width:480, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28, maxHeight:"90vh", overflowY:"auto" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Publish or Schedule</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+
+        {!mode ? (
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            <button onClick={() => setMode("now")}
+              style={{ padding:"16px 20px", borderRadius:10, border:`2px solid ${GREEN}`, background:`${GREEN}15`, cursor:"pointer", textAlign:"left" }}>
+              <div style={{ fontSize:13, fontWeight:700, color:GREEN, marginBottom:4 }}>🚀 Publish Now</div>
+              <div style={{ fontSize:12, color:C.textSecondary }}>Post immediately to {platform} for {contentType}</div>
+            </button>
+            <button onClick={() => setMode("later")}
+              style={{ padding:"16px 20px", borderRadius:10, border:`2px solid ${C.primary}`, background:`${C.primary}15`, cursor:"pointer", textAlign:"left" }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.primary, marginBottom:4 }}>📅 Schedule for Later</div>
+              <div style={{ fontSize:12, color:C.textSecondary }}>Choose a date and time to post</div>
+            </button>
+          </div>
+        ) : mode === "now" ? (
+          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+            <div>
+              <h4 style={{ margin:"0 0 12px", fontSize:13, fontWeight:700, color:C.textPrimary }}>Ready to Publish?</h4>
+              <p style={{ margin:0, fontSize:12, color:C.textSecondary, lineHeight:1.6 }}>
+                Your {contentType} for {platform} will be posted immediately. This action cannot be undone.
+              </p>
+            </div>
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:12 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Preview</div>
+              <div style={{ fontSize:12, color:C.textSecondary, lineHeight:1.5, maxHeight:120, overflowY:"auto" }}>
+                {generated.slice(0, 200)}…
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={() => setMode(null)} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>Back</button>
+              <button onClick={handlePublishNow} disabled={saving}
+                style={{ padding:"9px 20px", borderRadius:8, border:"none", background:GREEN, color:"#000", fontSize:13, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>
+                {saving ? "Publishing…" : "Publish Now"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+            <div>
+              <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Date *</label>
+              <input type="date" value={scheduleDate} onChange={e => setScheduleDate(e.target.value)}
+                style={{ width:"100%", boxSizing:"border-box", padding:"9px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+            </div>
+            <div>
+              <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Time</label>
+              <input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)}
+                style={{ width:"100%", boxSizing:"border-box", padding:"9px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+            </div>
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:12 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Content Type</div>
+              <div style={{ fontSize:12, color:C.textSecondary }}>
+                {typeIcon[contentType]} {contentType} · {platIcon[platform]} {platform}
+              </div>
+              <div style={{ fontSize:12, color:C.textPrimary, marginTop:8, fontWeight:600 }}>
+                Topic: {topic.slice(0, 50)}{topic.length > 50 ? "…" : ""}
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={() => setMode(null)} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>Back</button>
+              <button onClick={handleSchedule} disabled={!scheduleDate || saving}
+                style={{ padding:"9px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", opacity:!scheduleDate||saving?0.6:1 }}>
+                {saving ? "Scheduling…" : "Schedule Post"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Pick black or white text for legibility against a given background color.
 function readableText(hex) {
   const h = (hex || "").replace("#", "");
@@ -201,6 +300,8 @@ export default function LyricWorkstation({ orgId }) {
   const [profile, setProfile]       = useState(null);
   const [templateStyle, setTemplateStyle] = useState("overlay");
   const [brandColor, setBrandColor] = useState(GREEN);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduledPosts, setScheduledPosts] = useState([]);
 
   useEffect(() => {
     if (!orgId) return;
@@ -230,6 +331,37 @@ export default function LyricWorkstation({ orgId }) {
   const changeBrandColor = (c) => {
     setBrandColor(c);
     if (orgId) localStorage.setItem(`lyric_brand_${orgId}`, c);
+  };
+
+  const handlePublishNow = async () => {
+    // In production, this would trigger actual publishing to social platforms
+    // For now, we'll add it to scheduled posts marked as published
+    const post = {
+      id: Math.random().toString(36).slice(2, 9),
+      platform,
+      content_type: contentType,
+      topic,
+      copy: generated,
+      status: "published",
+      scheduled_at: new Date().toISOString(),
+    };
+    setScheduledPosts(prev => [post, ...prev]);
+  };
+
+  const handleSchedulePost = async (date, time) => {
+    const dateTimeStr = `${date}T${time}`;
+    const post = {
+      id: Math.random().toString(36).slice(2, 9),
+      platform,
+      content_type: contentType,
+      topic,
+      copy: generated,
+      images: carouselImages.length > 0 ? carouselImages.map(img => img.url) : (imageUrl ? [imageUrl] : []),
+      status: "scheduled",
+      scheduled_at: dateTimeStr,
+      brand_color: brandColor,
+    };
+    setScheduledPosts(prev => [post, ...prev]);
   };
 
   const generate = async () => {
@@ -405,7 +537,7 @@ export default function LyricWorkstation({ orgId }) {
                       <div style={{ marginLeft:"auto", display:"flex", gap:8 }}>
                         <button onClick={copy} style={{ padding:"6px 14px", borderRadius:6, border:`1px solid ${C.border}`, background:"transparent", color:copied?C.green:C.textSecondary, fontSize:12, cursor:"pointer", fontWeight:600 }}>{copied?"✓ Copied":"Copy"}</button>
                         <button onClick={generate} style={{ padding:"6px 14px", borderRadius:6, border:`1px solid ${GREEN}`, background:`${GREEN}15`, color:GREEN, fontSize:12, cursor:"pointer", fontWeight:700 }}>↺ Regenerate</button>
-                        <button style={{ padding:"6px 14px", borderRadius:6, border:"none", background:GREEN, color:"#000", fontSize:12, cursor:"pointer", fontWeight:700 }}>Schedule →</button>
+                        <button onClick={() => setShowScheduleModal(true)} style={{ padding:"6px 14px", borderRadius:6, border:"none", background:GREEN, color:"#000", fontSize:12, cursor:"pointer", fontWeight:700 }}>Schedule →</button>
                       </div>
                     </div>
 
@@ -483,47 +615,40 @@ export default function LyricWorkstation({ orgId }) {
 
         {tab === "schedule" && (
           <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%" }}>
-            <h3 style={{ margin:"0 0 20px", fontSize:16, fontWeight:700, color:C.textPrimary }}>Content Calendar — June 2026</h3>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:1, background:C.border, borderRadius:10, overflow:"hidden" }}>
-              {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
-                <div key={d} style={{ background:C.surface, padding:"10px 8px", textAlign:"center", fontSize:11, fontWeight:800, color:C.textMuted, textTransform:"uppercase", letterSpacing:0.5 }}>{d}</div>
-              ))}
-              {Array.from({ length:30 }, (_,i) => {
-                const day = i + 1;
-                const hasContent = [2,5,9,12,15,16,19,22,23,26,29].includes(day);
-                const types = ["📱","📧","📲","✍️"];
-                return (
-                  <div key={day} style={{ background:C.card, padding:10, minHeight:80, cursor:hasContent?"pointer":"default" }}>
-                    <div style={{ fontSize:12, fontWeight:600, color:day===24?GREEN:C.textSecondary, marginBottom:6 }}>{day}</div>
-                    {hasContent && (
-                      <div style={{ fontSize:10, padding:"3px 6px", borderRadius:4, background:`${GREEN}15`, color:GREEN, fontWeight:700, display:"inline-block" }}>
-                        {types[day%4]} Scheduled
+            <h3 style={{ margin:"0 0 20px", fontSize:16, fontWeight:700, color:C.textPrimary }}>Scheduled Posts</h3>
+            {scheduledPosts.length === 0 ? (
+              <div style={{ textAlign:"center", paddingTop:60, color:C.textMuted }}>
+                <div style={{ fontSize:48, marginBottom:16 }}>📅</div>
+                <h4 style={{ margin:"0 0 8px", fontSize:16, fontWeight:700, color:C.textSecondary }}>No Scheduled Content Yet</h4>
+                <p style={{ margin:0, fontSize:13, maxWidth:340, lineHeight:1.6 }}>Generate content in the Create tab and schedule it for publishing. Posts will appear here.</p>
+              </div>
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {scheduledPosts.map((post, i) => {
+                  const isPublished = post.status === "published";
+                  const isScheduled = post.status === "scheduled";
+                  const schedDate = new Date(post.scheduled_at);
+                  const dateStr = isPublished ? "Published" : schedDate.toLocaleDateString();
+                  const timeStr = schedDate.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
+                  return (
+                    <div key={post.id} style={{ display:"flex", gap:14, alignItems:"center", padding:"14px 16px", background:C.card, border:`1px solid ${C.border}`, borderRadius:8, borderLeft:`4px solid ${isPublished?C.green:GREEN}` }}>
+                      <div style={{ fontSize:24 }}>{platIcon[post.platform]}</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:13, fontWeight:700, color:C.textPrimary }}>{post.topic.slice(0, 50)}{post.topic.length > 50 ? "…" : ""}</div>
+                        <div style={{ fontSize:12, color:C.textSecondary, marginTop:2 }}>
+                          {typeIcon[post.content_type]} {post.content_type} · {dateStr}{isScheduled && ` · ${timeStr}`}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <div style={{ marginTop:24 }}>
-              <h3 style={{ margin:"0 0 14px", fontSize:14, fontWeight:700, color:C.textPrimary }}>Upcoming Scheduled Posts</h3>
-              {[
-                { date:"Jun 25", platform:"LinkedIn",  type:"Post",      title:"3 Signs Your Follow-Up System Is Broken",  time:"9:00 AM" },
-                { date:"Jun 26", platform:"Instagram", type:"Reel",      title:"Cold Lead Recovery in 60 Seconds",          time:"11:00 AM" },
-                { date:"Jun 28", platform:"Email",     type:"Newsletter", title:"July Strategy Preview — What's Coming",    time:"8:00 AM" },
-                { date:"Jun 30", platform:"Facebook",  type:"Post",      title:"Why Speed-to-Lead Wins in Home Services",   time:"10:00 AM" },
-              ].map((p, i) => (
-                <div key={i} style={{ display:"flex", gap:14, alignItems:"center", padding:"12px 16px", background:C.card, border:`1px solid ${C.border}`, borderRadius:8, marginBottom:8 }}>
-                  <div style={{ fontSize:12, fontWeight:800, color:C.textMuted, width:50, flexShrink:0 }}>{p.date}</div>
-                  <div style={{ fontSize:12, color:C.textMuted, width:60, flexShrink:0 }}>{p.time}</div>
-                  <div style={{ fontSize:12, fontWeight:700, color:C.primary, width:80, flexShrink:0 }}>{p.platform}</div>
-                  <div style={{ flex:1, fontSize:13, color:C.textPrimary }}>{p.title}</div>
-                  <div style={{ display:"flex", gap:6 }}>
-                    <span style={{ fontSize:10, padding:"3px 8px", borderRadius:4, background:`${C.amber}15`, color:C.amber, fontWeight:700 }}>{p.type}</span>
-                    <button style={{ fontSize:11, padding:"3px 10px", borderRadius:4, border:`1px solid ${C.red}`, background:"transparent", color:C.red, cursor:"pointer" }}>Remove</button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                      <div style={{ display:"flex", gap:6 }}>
+                        <span style={{ fontSize:11, padding:"4px 10px", borderRadius:4, background:isPublished?`${C.green}15`:`${C.amber}15`, color:isPublished?C.green:C.amber, fontWeight:700 }}>
+                          {isPublished ? "✓ Published" : "Scheduled"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -571,6 +696,18 @@ export default function LyricWorkstation({ orgId }) {
               ))}
             </div>
           </div>
+        )}
+
+        {showScheduleModal && (
+          <SchedulePostModal
+            contentType={contentType}
+            platform={platform}
+            topic={topic}
+            generated={generated}
+            onClose={() => setShowScheduleModal(false)}
+            onPublish={handlePublishNow}
+            onSchedule={handleSchedulePost}
+          />
         )}
       </div>
     </div>
