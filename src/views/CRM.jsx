@@ -162,6 +162,41 @@ function BulkCampaignModal({ contacts, orgId, onClose, onSent }) {
   );
 }
 
+function exportToCSV(contacts, communications) {
+  const contactsWithStats = contacts.map(c => {
+    const comms = communications.filter(cm => cm.contact_id === c.id);
+    const calls = comms.filter(cm => cm.channel === "call").length;
+    const texts = comms.filter(cm => cm.channel === "text").length;
+    const emails = comms.filter(cm => cm.channel === "email").length;
+    return {
+      Name: c.name,
+      Company: c.company,
+      Email: c.email,
+      Phone: c.phone,
+      Industry: c.industry,
+      Stage: c.stage,
+      Value: c.value,
+      Score: c.score,
+      Calls: calls,
+      Texts: texts,
+      Emails: emails,
+      "Created Date": new Date(c.created_at).toLocaleDateString(),
+    };
+  });
+
+  const headers = Object.keys(contactsWithStats[0] || {});
+  const rows = contactsWithStats.map(c => headers.map(h => c[h]));
+
+  const csv = [headers, ...rows].map(row => row.map(v => `"${v || ""}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `contacts-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function ComposeModal({ contact, orgId, onClose, onSent }) {
   const [action, setAction] = useState("call"); // call | text | email
   const [message, setMessage] = useState("");
@@ -606,7 +641,13 @@ export default function CRM({ orgId }) {
     <div style={{ display:"flex", height:"100%", overflow:"hidden" }}>
       <div style={{ width:selected?320:"100%", maxWidth:selected?320:"none", borderRight:`1px solid ${C.border}`, display:"flex", flexDirection:"column", flexShrink:0 }}>
         <div style={{ padding:"18px 16px 12px", background:C.surface, borderBottom:`1px solid ${C.border}`, flexShrink:0 }}>
-          <SectionHeader title="AIMS AI CRM" sub={`${contacts.length} contacts`} />
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+            <SectionHeader title="AIMS AI CRM" sub={`${contacts.length} contacts`} />
+            <button onClick={() => exportToCSV(contacts, communications)}
+              style={{ fontSize:10, fontWeight:700, color:C.primary, background:"transparent", border:"none", cursor:"pointer" }}>
+              📥 Export
+            </button>
+          </div>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search contacts…"
             style={{ width:"100%", padding:"8px 12px", borderRadius:7, background:C.card, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none", marginBottom:10, boxSizing:"border-box" }} />
           <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
