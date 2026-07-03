@@ -66,7 +66,7 @@ export default function App() {
   const renderView = () => {
     switch (tab) {
       case "dashboard":         return <Dashboard setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
-      case "crm":               return <CRM setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
+      case "crm":               return <CRM orgId={orgId} setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
       case "pipeline":          return <Pipeline setSelectedLead={setSelectedLead} setActiveTab={navTo} />;
       case "conversations":     return <Conversations selectedLead={selectedLead} setSelectedLead={setSelectedLead} orgId={orgId} />;
       case "work-queue":        return <WorkQueue userEmail={session.user.email} />;
@@ -83,7 +83,7 @@ export default function App() {
       case "tasks":             return <Tasks />;
       case "notes":             return <Notes />;
       case "pricing":           return <Pricing />;
-      case "settings":          return <Settings role={role} userEmail={session.user.email} onSignOut={handleSignOut} />;
+      case "settings":          return <Settings role={role} userEmail={session.user.email} orgId={orgId} onSignOut={handleSignOut} />;
       default:                  return <Dashboard leads={leads} setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
     }
   };

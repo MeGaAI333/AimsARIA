@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { C, AGENTS } from "../data.js";
 import { AgentAvatar, Badge, Btn, SectionHeader } from "../components/utils.jsx";
-import { getContacts, addContact, updateContact, deleteContact, getNotes, addNote } from "../lib/db.js";
+import { getContacts, addContact, updateContact, deleteContact, getNotes, addNote, getAgentVoice } from "../lib/db.js";
+import { supabase } from "../lib/supabase.js";
 
 const STAGE_COLOR = { cold:C.textSecondary, contacted:"#00B4FF", qualified:C.primary, negotiating:C.amber, won:C.green, lost:C.red };
 const STAGES = ["cold","contacted","qualified","negotiating","won","lost"];
@@ -15,6 +16,104 @@ function timeAgo(ts) {
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function ComposeModal({ contact, orgId, onClose }) {
+  const [action, setAction] = useState("call"); // call | text | email
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const a = AGENTS.find(ag => ag.id === contact.assigned_to);
+
+  const send = async () => {
+    if (!message.trim() || !contact.phone && action === "call") return;
+    setSending(true);
+    try {
+      let voiceId = null;
+      if (action === "call" && orgId) {
+        voiceId = await getAgentVoice(orgId, contact.assigned_to);
+      }
+
+      const payload = {
+        contact_id: contact.id,
+        contact_name: contact.name,
+        contact_phone: contact.phone,
+        contact_email: contact.email,
+        agent_id: contact.assigned_to,
+        action,
+        message: message.trim(),
+        voice_id: voiceId,
+        created_at: new Date().toISOString(),
+      };
+
+      const res = await supabase.functions.invoke("send-outreach", { body: payload });
+      if (res.error) throw new Error(res.error.message);
+
+      setMessage("");
+      onClose();
+    } catch (e) {
+      console.error("Failed to send:", e);
+      alert(`Error: ${e.message}`);
+    }
+    setSending(false);
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ width:500, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28, maxHeight:"85vh", overflowY:"auto" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Send Message</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+
+        <div style={{ marginBottom:20 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Channel</label>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+            {[
+              { value:"call", icon:"☎️", label:"Call" },
+              { value:"text", icon:"💬", label:"Text" },
+              { value:"email", icon:"📧", label:"Email" },
+            ].map(ch => (
+              <button key={ch.value} onClick={() => setAction(ch.value)}
+                style={{ padding:"12px 14px", borderRadius:10, border:`2px solid ${action===ch.value?a?.color:C.border}`, background:action===ch.value?`${a?.color}12`:"transparent", cursor:"pointer", textAlign:"center" }}>
+                <div style={{ fontSize:18, marginBottom:4 }}>{ch.icon}</div>
+                <div style={{ fontSize:11, fontWeight:700, color:action===ch.value?a?.color:C.textPrimary }}>{ch.label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom:16 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>
+            {action === "call" ? "Call Script" : action === "text" ? "Message" : "Email Body"}
+          </label>
+          <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={
+            action === "call" ? "What should the AI agent say?" :
+            action === "text" ? "Text message content…" :
+            "Email message…"
+          } rows={5}
+            style={{ width:"100%", padding:12, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.textPrimary, fontSize:13, fontFamily:"inherit", resize:"none", outline:"none", boxSizing:"border-box" }} />
+        </div>
+
+        <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:14, marginBottom:16 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>Going to</div>
+          <div style={{ fontSize:13, fontWeight:600, color:C.textPrimary, marginBottom:4 }}>{contact.name}</div>
+          <div style={{ fontSize:12, color:C.textSecondary }}>
+            {action === "call" ? `☎️ ${contact.phone || "No phone"}` :
+             action === "text" ? `💬 ${contact.phone || "No phone"}` :
+             `📧 ${contact.email || "No email"}`}
+          </div>
+        </div>
+
+        <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+          <button onClick={onClose} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>Cancel</button>
+          <button onClick={send} disabled={sending || !message.trim() || (action === "call" && !contact.phone)}
+            style={{ padding:"9px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", opacity:sending || !message.trim() ? 0.6 : 1 }}>
+            {sending ? "Sending…" : "Send"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ContactRow({ c, selected, onClick }) {
@@ -39,11 +138,12 @@ function ContactRow({ c, selected, onClick }) {
   );
 }
 
-function ContactDetail({ contact, onClose, onStageChange }) {
+function ContactDetail({ contact, orgId, onClose, onStageChange }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [notes, setNotes] = useState([]);
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const [showCompose, setShowCompose] = useState(false);
   const a = AGENTS.find(ag => ag.id === contact.assigned_to);
 
   useEffect(() => {
@@ -82,10 +182,16 @@ function ContactDetail({ contact, onClose, onStageChange }) {
         </div>
       </div>
 
-      <div style={{ display:"flex", gap:4, padding:"0 24px", borderBottom:`1px solid ${C.border}`, background:C.surface, flexShrink:0 }}>
-        {["overview","notes"].map(t => (
-          <button key={t} onClick={() => setActiveTab(t)} style={{ padding:"10px 14px", border:"none", background:"transparent", color:activeTab===t?C.primary:C.textSecondary, fontSize:12, fontWeight:700, cursor:"pointer", borderBottom:`2px solid ${activeTab===t?C.primary:"transparent"}`, textTransform:"capitalize" }}>{t}</button>
-        ))}
+      <div style={{ display:"flex", gap:4, padding:"0 24px", borderBottom:`1px solid ${C.border}`, background:C.surface, flexShrink:0, justifyContent:"space-between", alignItems:"center" }}>
+        <div style={{ display:"flex", gap:4 }}>
+          {["overview","notes"].map(t => (
+            <button key={t} onClick={() => setActiveTab(t)} style={{ padding:"10px 14px", border:"none", background:"transparent", color:activeTab===t?C.primary:C.textSecondary, fontSize:12, fontWeight:700, cursor:"pointer", borderBottom:`2px solid ${activeTab===t?C.primary:"transparent"}`, textTransform:"capitalize" }}>{t}</button>
+          ))}
+        </div>
+        <button onClick={() => setShowCompose(true)}
+          style={{ padding:"8px 14px", borderRadius:6, border:`1px solid ${a?.color}`, background:a?.color, color:"#fff", fontSize:11, fontWeight:700, cursor:"pointer", flexShrink:0 }}>
+          ☎️ Send Message
+        </button>
       </div>
 
       <div style={{ flex:1, overflowY:"auto", padding:"20px 24px" }}>
@@ -147,6 +253,8 @@ function ContactDetail({ contact, onClose, onStageChange }) {
           </div>
         )}
       </div>
+
+      {showCompose && <ComposeModal contact={contact} orgId={orgId} onClose={() => setShowCompose(false)} />}
     </div>
   );
 }
@@ -216,7 +324,7 @@ function AddContactModal({ onClose, onSave }) {
   );
 }
 
-export default function CRM() {
+export default function CRM({ orgId }) {
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
@@ -281,7 +389,7 @@ export default function CRM() {
 
       {selected && (
         <div style={{ flex:1, overflow:"hidden" }}>
-          <ContactDetail contact={selected} onClose={() => setSelected(null)} onStageChange={handleStageChange} />
+          <ContactDetail contact={selected} orgId={orgId} onClose={() => setSelected(null)} onStageChange={handleStageChange} />
         </div>
       )}
 
