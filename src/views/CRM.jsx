@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { C, AGENTS } from "../data.js";
 import { AgentAvatar, Badge, Btn, SectionHeader } from "../components/utils.jsx";
-import { getContacts, addContact, updateContact, deleteContact, getNotes, addNote, getAgentVoice } from "../lib/db.js";
+import { getContacts, addContact, updateContact, deleteContact, getNotes, addNote, getAgentVoice, logCommunication, getCommunicationHistory, updateCommunicationStatus } from "../lib/db.js";
 import { supabase } from "../lib/supabase.js";
 
 const STAGE_COLOR = { cold:C.textSecondary, contacted:"#00B4FF", qualified:C.primary, negotiating:C.amber, won:C.green, lost:C.red };
@@ -18,7 +18,7 @@ function timeAgo(ts) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function ComposeModal({ contact, orgId, onClose }) {
+function ComposeModal({ contact, orgId, onClose, onSent }) {
   const [action, setAction] = useState("call"); // call | text | email
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -48,6 +48,19 @@ function ComposeModal({ contact, orgId, onClose }) {
       const res = await supabase.functions.invoke("send-outreach", { body: payload });
       if (res.error) throw new Error(res.error.message);
 
+      const log = await logCommunication({
+        contact_id: contact.id,
+        contact_name: contact.name,
+        contact_phone: contact.phone,
+        contact_email: contact.email,
+        agent_id: contact.assigned_to,
+        channel: action,
+        message: message.trim(),
+        status: "sent",
+        external_id: res.data?.call_id || res.data?.message_id || res.data?.email_id || null,
+      });
+
+      if (onSent) onSent(log);
       setMessage("");
       onClose();
     } catch (e) {
@@ -144,10 +157,12 @@ function ContactDetail({ contact, orgId, onClose, onStageChange }) {
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
+  const [activity, setActivity] = useState([]);
   const a = AGENTS.find(ag => ag.id === contact.assigned_to);
 
   useEffect(() => {
     getNotes().then(all => setNotes(all.filter(n => n.contact_id === contact.id)));
+    getCommunicationHistory(contact.id).then(all => setActivity(all));
   }, [contact.id]);
 
   const saveNote = async () => {
@@ -184,7 +199,7 @@ function ContactDetail({ contact, orgId, onClose, onStageChange }) {
 
       <div style={{ display:"flex", gap:4, padding:"0 24px", borderBottom:`1px solid ${C.border}`, background:C.surface, flexShrink:0, justifyContent:"space-between", alignItems:"center" }}>
         <div style={{ display:"flex", gap:4 }}>
-          {["overview","notes"].map(t => (
+          {["overview","activity","notes"].map(t => (
             <button key={t} onClick={() => setActiveTab(t)} style={{ padding:"10px 14px", border:"none", background:"transparent", color:activeTab===t?C.primary:C.textSecondary, fontSize:12, fontWeight:700, cursor:"pointer", borderBottom:`2px solid ${activeTab===t?C.primary:"transparent"}`, textTransform:"capitalize" }}>{t}</button>
           ))}
         </div>
@@ -228,6 +243,35 @@ function ContactDetail({ contact, orgId, onClose, onStageChange }) {
           </div>
         )}
 
+        {activeTab === "activity" && (
+          <div>
+            {activity.length === 0 && <div style={{ fontSize:12, color:C.textMuted, textAlign:"center", marginTop:24 }}>No activity yet.</div>}
+            {activity.map(log => {
+              const channelIcons = { call: "☎️", text: "💬", email: "📧" };
+              const statusColors = { sent: C.green, pending: C.amber, failed: C.red, completed: C.green };
+              return (
+                <div key={log.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:14, marginBottom:10 }}>
+                  <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+                    <div style={{ fontSize:18, flex:"0 0 auto" }}>{channelIcons[log.channel]}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                        <div>
+                          <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary, textTransform:"capitalize" }}>{log.channel} via {log.agent_id.toUpperCase()}</div>
+                          <div style={{ fontSize:10, color:C.textMuted }}>{timeAgo(log.created_at)}</div>
+                        </div>
+                        <div style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"3px 10px", borderRadius:20, background:`${statusColors[log.status]}15`, border:`1px solid ${statusColors[log.status]}30` }}>
+                          <span style={{ fontSize:10, fontWeight:700, color:statusColors[log.status], textTransform:"capitalize" }}>{log.status}</span>
+                        </div>
+                      </div>
+                      <p style={{ margin:0, fontSize:12, color:C.textSecondary, lineHeight:1.6 }}>{log.message}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {activeTab === "notes" && (
           <div>
             <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:14, marginBottom:16 }}>
@@ -254,7 +298,17 @@ function ContactDetail({ contact, orgId, onClose, onStageChange }) {
         )}
       </div>
 
-      {showCompose && <ComposeModal contact={contact} orgId={orgId} onClose={() => setShowCompose(false)} />}
+      {showCompose && (
+        <ComposeModal
+          contact={contact}
+          orgId={orgId}
+          onClose={() => setShowCompose(false)}
+          onSent={(log) => {
+            setActivity(prev => [log, ...prev]);
+            setActiveTab("activity");
+          }}
+        />
+      )}
     </div>
   );
 }

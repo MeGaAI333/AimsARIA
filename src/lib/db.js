@@ -218,3 +218,30 @@ export async function getAgentVoice(orgId, agentId) {
   const settings = await getOrgSettings(orgId);
   return settings?.agent_voices?.[agentId] || null;
 }
+
+// ── COMMUNICATION LOGS ─────────────────────────────────────────────────────
+export async function logCommunication(log) {
+  const orgId = await getOrgId();
+  const record = orgId ? { ...log, org_id: orgId } : log;
+  const { data, error } = await supabase.from("communication_logs").insert([record]).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getCommunicationHistory(contactId) {
+  const { data, error } = await supabase
+    .from("communication_logs")
+    .select("*")
+    .eq("contact_id", contactId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateCommunicationStatus(logId, status, updates = {}) {
+  const { data, error } = await supabase.from("communication_logs")
+    .update({ status, updated_at: new Date().toISOString(), ...updates })
+    .eq("id", logId).select().single();
+  if (error) throw error;
+  return data;
+}
