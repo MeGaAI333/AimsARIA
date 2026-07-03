@@ -36,6 +36,132 @@ const TEMPLATES = {
   ],
 };
 
+function BulkCampaignModal({ contacts, orgId, onClose, onSent }) {
+  const [action, setAction] = useState("call");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const validContacts = action === "call" ? contacts.filter(c => c.phone) :
+                        action === "text" ? contacts.filter(c => c.phone) :
+                        contacts.filter(c => c.email);
+
+  const sendBulk = async () => {
+    if (!message.trim() || validContacts.length === 0) return;
+    setSending(true);
+    try {
+      const results = [];
+      for (let i = 0; i < validContacts.length; i++) {
+        const c = validContacts[i];
+        try {
+          const a = AGENTS.find(ag => ag.id === c.assigned_to);
+          let voiceId = null;
+          if (action === "call" && orgId) {
+            voiceId = await getAgentVoice(orgId, c.assigned_to);
+          }
+
+          const payload = {
+            contact_id: c.id,
+            contact_name: c.name,
+            contact_phone: c.phone,
+            contact_email: c.email,
+            agent_id: c.assigned_to,
+            action,
+            message: message.trim(),
+            voice_id: voiceId,
+          };
+
+          const res = await supabase.functions.invoke("send-outreach", { body: payload });
+          if (!res.error) {
+            const log = await logCommunication({
+              contact_id: c.id,
+              contact_name: c.name,
+              contact_phone: c.phone,
+              contact_email: c.email,
+              agent_id: c.assigned_to,
+              channel: action,
+              message: message.trim(),
+              status: "sent",
+              external_id: res.data?.call_id || res.data?.message_id || res.data?.email_id,
+            });
+            results.push(log);
+          }
+        } catch (e) {
+          console.error(`Failed for ${c.name}:`, e);
+        }
+        setProgress(i + 1);
+      }
+      if (onSent) onSent(results);
+      onClose();
+    } catch (e) {
+      console.error("Bulk send failed:", e);
+      alert(`Error: ${e.message}`);
+    }
+    setSending(false);
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ width:520, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28, maxHeight:"85vh", overflowY:"auto" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Bulk Campaign</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+
+        <div style={{ marginBottom:20, padding:14, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8 }}>
+          <div style={{ fontSize:12, fontWeight:700, color:C.textMuted, marginBottom:8 }}>TARGET CONTACTS</div>
+          <div style={{ fontSize:13, color:C.textPrimary, fontWeight:600, marginBottom:4 }}>{validContacts.length} contacts</div>
+          <div style={{ fontSize:11, color:C.textSecondary }}>
+            {action === "call" && `${validContacts.length} have phone numbers`}
+            {action === "text" && `${validContacts.length} have phone numbers`}
+            {action === "email" && `${validContacts.length} have emails`}
+          </div>
+        </div>
+
+        <div style={{ marginBottom:20 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Channel</label>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+            {[
+              { value:"call", icon:"☎️", label:"Call" },
+              { value:"text", icon:"💬", label:"Text" },
+              { value:"email", icon:"📧", label:"Email" },
+            ].map(ch => (
+              <button key={ch.value} onClick={() => setAction(ch.value)}
+                style={{ padding:"12px 14px", borderRadius:10, border:`2px solid ${action===ch.value?C.primary:C.border}`, background:action===ch.value?`${C.primary}12`:"transparent", cursor:"pointer", textAlign:"center" }}>
+                <div style={{ fontSize:18, marginBottom:4 }}>{ch.icon}</div>
+                <div style={{ fontSize:11, fontWeight:700, color:action===ch.value?C.primary:C.textPrimary }}>{ch.label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom:16 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Message</label>
+          <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Message for all contacts…" rows={4}
+            style={{ width:"100%", padding:12, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.textPrimary, fontSize:13, fontFamily:"inherit", resize:"none", outline:"none", boxSizing:"border-box" }} />
+        </div>
+
+        {sending && (
+          <div style={{ marginBottom:16, padding:12, background:C.surface, borderRadius:8 }}>
+            <div style={{ fontSize:12, color:C.textSecondary, marginBottom:8 }}>Sending to {validContacts.length} contacts…</div>
+            <div style={{ width:"100%", height:4, background:C.border, borderRadius:20, overflow:"hidden" }}>
+              <div style={{ height:"100%", background:C.green, width:`${(progress/validContacts.length)*100}%`, transition:"width 0.3s" }} />
+            </div>
+            <div style={{ fontSize:10, color:C.textMuted, marginTop:6 }}>{progress} / {validContacts.length} sent</div>
+          </div>
+        )}
+
+        <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+          <button onClick={onClose} disabled={sending} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer", opacity:sending?0.6:1 }}>Cancel</button>
+          <button onClick={sendBulk} disabled={sending || !message.trim() || validContacts.length === 0}
+            style={{ padding:"9px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", opacity:sending || !message.trim() ? 0.6 : 1 }}>
+            {sending ? `Sending… ${progress}/${validContacts.length}` : `Send to ${validContacts.length}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ComposeModal({ contact, orgId, onClose, onSent }) {
   const [action, setAction] = useState("call"); // call | text | email
   const [message, setMessage] = useState("");
@@ -448,6 +574,7 @@ export default function CRM({ orgId }) {
   const [stageFilter, setStageFilter] = useState("all");
   const [selected, setSelected] = useState(null);
   const [showAdd, setShowAdd]   = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -502,8 +629,11 @@ export default function CRM({ orgId }) {
             </div>
           )}
         </div>
-        <div style={{ padding:14, borderTop:`1px solid ${C.border}`, background:C.surface, flexShrink:0 }}>
+        <div style={{ padding:14, borderTop:`1px solid ${C.border}`, background:C.surface, flexShrink:0, display:"flex", gap:8, flexDirection:"column" }}>
           <button onClick={() => setShowAdd(true)} style={{ width:"100%", padding:"9px 0", borderRadius:8, border:`1px solid ${C.primary}`, background:`${C.primary}15`, color:C.primary, fontSize:13, fontWeight:700, cursor:"pointer" }}>+ Add Contact</button>
+          {filtered.length > 0 && (
+            <button onClick={() => setShowBulk(true)} style={{ width:"100%", padding:"9px 0", borderRadius:8, border:`1px solid ${C.amber}`, background:`${C.amber}15`, color:C.amber, fontSize:13, fontWeight:700, cursor:"pointer" }}>📢 Send to {filtered.length}</button>
+          )}
         </div>
       </div>
 
@@ -514,6 +644,17 @@ export default function CRM({ orgId }) {
       )}
 
       {showAdd && <AddContactModal onClose={() => setShowAdd(false)} onSave={handleAddContact} />}
+      {showBulk && (
+        <BulkCampaignModal
+          contacts={filtered}
+          orgId={orgId}
+          onClose={() => setShowBulk(false)}
+          onSent={(logs) => {
+            setCommunications(prev => [...logs, ...prev]);
+            setShowBulk(false);
+          }}
+        />
+      )}
     </div>
   );
 }
