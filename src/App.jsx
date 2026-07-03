@@ -1,6 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, createContext, useContext } from "react";
 import { supabase } from "./lib/supabase.js";
-import { C } from "./data.js";
+import { C, THEMES } from "./data.js";
+
+export const ThemeContext = createContext("dark");
+
+export function useTheme() {
+  return useContext(ThemeContext);
+}
 import Login from "./views/Login.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import Dashboard from "./views/Dashboard.jsx";
@@ -25,6 +31,7 @@ export default function App() {
   const [role, setRole]                 = useState("user");
   const [orgId, setOrgId]               = useState("");
   const [selectedLead, setSelectedLead] = useState(null);
+  const [theme, setTheme]               = useState(() => localStorage.getItem("aims-theme") || "dark");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
@@ -49,6 +56,12 @@ export default function App() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setTab("dashboard");
+  };
+
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    localStorage.setItem("aims-theme", newTheme);
   };
 
   if (session === undefined) {
@@ -83,17 +96,21 @@ export default function App() {
       case "tasks":             return <Tasks />;
       case "notes":             return <Notes />;
       case "pricing":           return <Pricing />;
-      case "settings":          return <Settings role={role} userEmail={session.user.email} orgId={orgId} onSignOut={handleSignOut} />;
+      case "settings":          return <Settings role={role} userEmail={session.user.email} orgId={orgId} theme={theme} onThemeToggle={toggleTheme} onSignOut={handleSignOut} />;
       default:                  return <Dashboard leads={leads} setActiveTab={navTo} setSelectedLead={setSelectedLead} />;
     }
   };
 
+  const colors = THEMES[theme];
+
   return (
-    <div style={{ display:"flex", height:"100vh", overflow:"hidden", fontFamily:"'Inter', -apple-system, sans-serif" }}>
-      <Sidebar tab={tab} setTab={navTo} role={role} onSignOut={handleSignOut} />
-      <main style={{ flex:1, overflow:"hidden", background:"#06091A" }}>
-        {renderView()}
-      </main>
-    </div>
+    <ThemeContext.Provider value={theme}>
+      <div style={{ display:"flex", height:"100vh", overflow:"hidden", fontFamily:"'Inter', -apple-system, sans-serif", background: colors.bg }}>
+        <Sidebar tab={tab} setTab={navTo} role={role} onSignOut={handleSignOut} />
+        <main style={{ flex:1, overflow:"hidden", background: colors.bg }}>
+          {renderView()}
+        </main>
+      </div>
+    </ThemeContext.Provider>
   );
 }

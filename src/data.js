@@ -1,13 +1,27 @@
 // ── COLORS ───────────────────────────────────────────────────────────────────
-export const C = {
-  bg: "#06091A", sidebar: "#090D22", surface: "#0C1128", card: "#101630",
-  border: "#1A2550", borderHover: "#2A3D78",
-  primary: "#4F7EFF", primaryDim: "#121D50",
-  green: "#10B981", greenDim: "#082B1E",
-  amber: "#F59E0B", amberDim: "#3A2000",
-  red: "#EF4444", redDim: "#2D0A0A",
-  textPrimary: "#DDE6FF", textSecondary: "#6A82B8", textMuted: "#2E4070",
+export const THEMES = {
+  dark: {
+    bg: "#06091A", sidebar: "#090D22", surface: "#0C1128", card: "#101630",
+    border: "#1A2550", borderHover: "#2A3D78",
+    primary: "#4F7EFF", primaryDim: "#121D50",
+    green: "#10B981", greenDim: "#082B1E",
+    amber: "#F59E0B", amberDim: "#3A2000",
+    red: "#EF4444", redDim: "#2D0A0A",
+    textPrimary: "#FFFFFF", textSecondary: "#B8CCFF", textMuted: "#7A9FD9",
+  },
+  light: {
+    bg: "#F9FAFB", sidebar: "#F3F4F6", surface: "#EFEFEF", card: "#FFFFFF",
+    border: "#D1D5DB", borderHover: "#9CA3AF",
+    primary: "#2563EB", primaryDim: "#EFF6FF",
+    green: "#059669", greenDim: "#F0FDF4",
+    amber: "#D97706", amberDim: "#FFFBEB",
+    red: "#DC2626", redDim: "#FEE2E2",
+    textPrimary: "#111827", textSecondary: "#374151", textMuted: "#6B7280",
+  },
 };
+
+// Default to dark theme
+export const C = THEMES.dark;
 
 // ARIA=Electric Blue | MELODY=Hot Pink | LYRIC=Neon Green | MUSE=Neon Orange | ALLEGRA=Neon Cyan
 export const AC = {

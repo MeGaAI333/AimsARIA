@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { C, AGENTS } from "../data.js";
+import { C, AGENTS, THEMES } from "../data.js";
 import { AgentAvatar, Badge } from "../components/utils.jsx";
 import { supabase } from "../lib/supabase.js";
 import { getOrgSettings, updateAgentVoice } from "../lib/db.js";
+import { useTheme } from "../App.jsx";
 
 const ROLE_LABEL = { admin: "Admin", client: "Client", lyric: "LYRIC Client", user: "User" };
 const ROLE_COLOR = { admin: C.primary, client: C.amber, lyric: "#39FF14", user: C.green };
@@ -14,7 +15,7 @@ const INVITE_ROLES = [
   { value:"user",   label:"User",         desc:"Basic access — conversations, calendar, tasks",           color:C.green },
 ];
 
-function InvitePanel() {
+function InvitePanel({ currentColors }) {
   const [email, setEmail]       = useState("");
   const [name, setName]         = useState("");
   const [company, setCompany]   = useState("");
@@ -43,37 +44,37 @@ function InvitePanel() {
   };
 
   return (
-    <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
-      <h3 style={{ margin:"0 0 6px", fontSize:14, fontWeight:700, color:C.textPrimary }}>Invite Team Member / Client</h3>
-      <p style={{ margin:"0 0 20px", fontSize:12, color:C.textSecondary }}>Send an email invite with login instructions. They'll be prompted to set their password on first login.</p>
+    <div style={{ background:currentColors.card, border:`1px solid ${currentColors.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
+      <h3 style={{ margin:"0 0 6px", fontSize:14, fontWeight:700, color:currentColors.textPrimary }}>Invite Team Member / Client</h3>
+      <p style={{ margin:"0 0 20px", fontSize:12, color:currentColors.textSecondary }}>Send an email invite with login instructions. They'll be prompted to set their password on first login.</p>
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:16 }}>
         <div>
-          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:5 }}>Name</label>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:currentColors.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:5 }}>Name</label>
           <input value={name} onChange={e => setName(e.target.value)} placeholder="Full name"
-            style={{ width:"100%", boxSizing:"border-box", padding:"10px 14px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+            style={{ width:"100%", boxSizing:"border-box", padding:"10px 14px", borderRadius:8, background:currentColors.surface, border:`1px solid ${currentColors.border}`, color:currentColors.textPrimary, fontSize:13, outline:"none" }} />
         </div>
         <div>
-          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:5 }}>Email *</label>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:currentColors.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:5 }}>Email *</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="client@example.com"
-            style={{ width:"100%", boxSizing:"border-box", padding:"10px 14px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+            style={{ width:"100%", boxSizing:"border-box", padding:"10px 14px", borderRadius:8, background:currentColors.surface, border:`1px solid ${currentColors.border}`, color:currentColors.textPrimary, fontSize:13, outline:"none" }} />
         </div>
         <div style={{ gridColumn:"1 / -1" }}>
-          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:5 }}>Company Name</label>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:currentColors.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:5 }}>Company Name</label>
           <input value={company} onChange={e => setCompany(e.target.value)} placeholder="e.g. Acme HVAC (used to isolate their data)"
-            style={{ width:"100%", boxSizing:"border-box", padding:"10px 14px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
-          {company.trim() && <div style={{ fontSize:10, color:C.textMuted, marginTop:4 }}>Org ID: {company.trim().toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"")}</div>}
+            style={{ width:"100%", boxSizing:"border-box", padding:"10px 14px", borderRadius:8, background:currentColors.surface, border:`1px solid ${currentColors.border}`, color:currentColors.textPrimary, fontSize:13, outline:"none" }} />
+          {company.trim() && <div style={{ fontSize:10, color:currentColors.textMuted, marginTop:4 }}>Org ID: {company.trim().toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"")}</div>}
         </div>
       </div>
 
       <div style={{ marginBottom:20 }}>
-        <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Access Level</label>
+        <label style={{ display:"block", fontSize:11, fontWeight:700, color:currentColors.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Access Level</label>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
           {INVITE_ROLES.map(r => (
             <button key={r.value} onClick={() => setRole(r.value)}
-              style={{ padding:"12px 14px", borderRadius:10, border:`2px solid ${role===r.value ? r.color : C.border}`, background:role===r.value ? `${r.color}12` : "transparent", cursor:"pointer", textAlign:"left" }}>
-              <div style={{ fontSize:13, fontWeight:700, color:role===r.value ? r.color : C.textPrimary, marginBottom:3 }}>{r.label}</div>
-              <div style={{ fontSize:11, color:C.textSecondary, lineHeight:1.4 }}>{r.desc}</div>
+              style={{ padding:"12px 14px", borderRadius:10, border:`2px solid ${role===r.value ? r.color : currentColors.border}`, background:role===r.value ? `${r.color}12` : "transparent", cursor:"pointer", textAlign:"left" }}>
+              <div style={{ fontSize:13, fontWeight:700, color:role===r.value ? r.color : currentColors.textPrimary, marginBottom:3 }}>{r.label}</div>
+              <div style={{ fontSize:11, color:currentColors.textSecondary, lineHeight:1.4 }}>{r.desc}</div>
             </button>
           ))}
         </div>
@@ -91,14 +92,14 @@ function InvitePanel() {
       )}
 
       <button onClick={send} disabled={!email.trim() || status==="sending"}
-        style={{ padding:"10px 24px", borderRadius:8, border:"none", background:!email.trim()||status==="sending" ? C.border : C.primary, color:!email.trim()||status==="sending" ? C.textMuted : "#fff", fontSize:13, fontWeight:700, cursor:!email.trim()||status==="sending"?"not-allowed":"pointer" }}>
+        style={{ padding:"10px 24px", borderRadius:8, border:"none", background:!email.trim()||status==="sending" ? currentColors.border : currentColors.primary, color:!email.trim()||status==="sending" ? currentColors.textMuted : "#fff", fontSize:13, fontWeight:700, cursor:!email.trim()||status==="sending"?"not-allowed":"pointer" }}>
         {status === "sending" ? "Sending…" : "Send Invite →"}
       </button>
     </div>
   );
 }
 
-function VoicePicker({ orgId, agentId }) {
+function VoicePicker({ orgId, agentId, currentColors }) {
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -167,10 +168,10 @@ function VoicePicker({ orgId, agentId }) {
 
   const agent = AGENTS.find(a => a.id === agentId);
   return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 14px", borderRadius:8, background:C.surface, border:`1px solid ${agent?.color}30`, marginBottom:10 }}>
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 14px", borderRadius:8, background:currentColors.surface, border:`1px solid ${agent?.color}30`, marginBottom:10 }}>
       <div style={{ flex:1 }}>
         <div style={{ fontSize:13, fontWeight:700, color:agent?.color }}>{agent?.name}</div>
-        <div style={{ fontSize:11, color:C.textSecondary }}>{selectedVoice?.name || "Default voice"}</div>
+        <div style={{ fontSize:11, color:currentColors.textSecondary }}>{selectedVoice?.name || "Default voice"}</div>
       </div>
       <div style={{ display:"flex", gap:8 }}>
         {selectedVoice && (
@@ -187,25 +188,25 @@ function VoicePicker({ orgId, agentId }) {
 
       {showPicker && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
-          <div style={{ width:500, maxHeight:"80vh", background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:24, overflowY:"auto" }}>
+          <div style={{ width:500, maxHeight:"80vh", background:currentColors.card, border:`1px solid ${currentColors.border}`, borderRadius:14, padding:24, overflowY:"auto" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Choose Voice for {agent?.name}</h3>
-              <button onClick={() => setShowPicker(false)} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+              <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:currentColors.textPrimary }}>Choose Voice for {agent?.name}</h3>
+              <button onClick={() => setShowPicker(false)} style={{ background:"transparent", border:"none", color:currentColors.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
             </div>
             <input value={searching} onChange={e => setSearching(e.target.value)} placeholder="Search voices…"
-              style={{ width:"100%", padding:"9px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none", marginBottom:16, boxSizing:"border-box" }} />
-            {loading && <div style={{ textAlign:"center", fontSize:12, color:C.textMuted, padding:24 }}>Loading voices…</div>}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:8, background:currentColors.surface, border:`1px solid ${currentColors.border}`, color:currentColors.textPrimary, fontSize:13, outline:"none", marginBottom:16, boxSizing:"border-box" }} />
+            {loading && <div style={{ textAlign:"center", fontSize:12, color:currentColors.textMuted, padding:24 }}>Loading voices…</div>}
             {!loading && (
               <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:8 }}>
                 {filtered.map(v => (
-                  <div key={v.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:8, background:C.surface, border:`1px solid ${selectedVoice?.id === v.id ? agent?.color : C.border}`, cursor:"pointer" }}
+                  <div key={v.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:8, background:currentColors.surface, border:`1px solid ${selectedVoice?.id === v.id ? agent?.color : currentColors.border}`, cursor:"pointer" }}
                     onClick={() => selectVoice(v)}>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:12, fontWeight:600, color:C.textPrimary }}>{v.name}</div>
-                      <div style={{ fontSize:10, color:C.textSecondary }}>{v.category || "Voice"}</div>
+                      <div style={{ fontSize:12, fontWeight:600, color:currentColors.textPrimary }}>{v.name}</div>
+                      <div style={{ fontSize:10, color:currentColors.textSecondary }}>{v.category || "Voice"}</div>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); playPreview(v.id); }}
-                      style={{ padding:"4px 8px", borderRadius:6, border:`1px solid ${C.textMuted}`, background:"transparent", color:C.textMuted, fontSize:10, fontWeight:700, cursor:"pointer" }}>
+                      style={{ padding:"4px 8px", borderRadius:6, border:`1px solid ${currentColors.textMuted}`, background:"transparent", color:currentColors.textMuted, fontSize:10, fontWeight:700, cursor:"pointer" }}>
                       {previewPlaying === v.id ? "Playing…" : "▶"}
                     </button>
                     {selectedVoice?.id === v.id && <div style={{ fontSize:16, color:agent?.color }}>✓</div>}
@@ -220,53 +221,71 @@ function VoicePicker({ orgId, agentId }) {
   );
 }
 
-export default function Settings({ role, userEmail, orgId, onSignOut }) {
+export default function Settings({ role, userEmail, orgId, theme, onThemeToggle, onSignOut }) {
+  const currentColors = THEMES[theme];
 
   return (
-    <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%" }}>
-      <h2 style={{ margin:"0 0 24px", fontSize:20, fontWeight:800, color:C.textPrimary }}>Settings</h2>
+    <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%", background: currentColors.bg }}>
+      <h2 style={{ margin:"0 0 24px", fontSize:20, fontWeight:800, color:currentColors.textPrimary }}>Settings</h2>
 
       {/* Account Info */}
-      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
-        <h3 style={{ margin:"0 0 16px", fontSize:14, fontWeight:700, color:C.textPrimary }}>Account</h3>
+      <div style={{ background:currentColors.card, border:`1px solid ${currentColors.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
+        <h3 style={{ margin:"0 0 16px", fontSize:14, fontWeight:700, color:currentColors.textPrimary }}>Account</h3>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div>
-            <div style={{ fontSize:13, fontWeight:600, color:C.textPrimary, marginBottom:6 }}>{userEmail}</div>
-            <div style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"3px 10px", borderRadius:20, background:`${ROLE_COLOR[role]||C.primary}15`, border:`1px solid ${ROLE_COLOR[role]||C.primary}30` }}>
-              <span style={{ fontSize:10, fontWeight:800, color:ROLE_COLOR[role]||C.primary, textTransform:"uppercase", letterSpacing:0.5 }}>{ROLE_LABEL[role]||role}</span>
+            <div style={{ fontSize:13, fontWeight:600, color:currentColors.textPrimary, marginBottom:6 }}>{userEmail}</div>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"3px 10px", borderRadius:20, background:`${ROLE_COLOR[role]||currentColors.primary}15`, border:`1px solid ${ROLE_COLOR[role]||currentColors.primary}30` }}>
+              <span style={{ fontSize:10, fontWeight:800, color:ROLE_COLOR[role]||currentColors.primary, textTransform:"uppercase", letterSpacing:0.5 }}>{ROLE_LABEL[role]||role}</span>
             </div>
           </div>
           <button onClick={onSignOut}
-            style={{ padding:"8px 18px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+            style={{ padding:"8px 18px", borderRadius:8, border:`1px solid ${currentColors.border}`, background:"transparent", color:currentColors.textSecondary, fontSize:12, fontWeight:600, cursor:"pointer" }}>
             Sign Out
           </button>
         </div>
       </div>
 
+      {/* Theme Settings */}
+      <div style={{ background:currentColors.card, border:`1px solid ${currentColors.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
+        <h3 style={{ margin:"0 0 16px", fontSize:14, fontWeight:700, color:currentColors.textPrimary }}>Appearance</h3>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div>
+            <div style={{ fontSize:13, fontWeight:600, color:currentColors.textPrimary, marginBottom:6 }}>Theme</div>
+            <div style={{ fontSize:12, color:currentColors.textSecondary }}>
+              {theme === "dark" ? "🌙 Dark Mode" : "☀️ Light Mode"}
+            </div>
+          </div>
+          <button onClick={onThemeToggle}
+            style={{ padding:"8px 18px", borderRadius:8, border:`1px solid ${currentColors.border}`, background:currentColors.surface, color:currentColors.textPrimary, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+            {theme === "dark" ? "Switch to Light" : "Switch to Dark"}
+          </button>
+        </div>
+      </div>
+
       {/* Invite — admin only */}
-      {role === "admin" && <InvitePanel />}
+      {role === "admin" && <InvitePanel currentColors={currentColors} />}
 
       {/* API Configuration */}
-      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
-        <h3 style={{ margin:"0 0 6px", fontSize:14, fontWeight:700, color:C.textPrimary }}>AI Configuration</h3>
-        <p style={{ margin:"0 0 16px", fontSize:12, color:C.textSecondary }}>Anthropic API key is managed server-side by AIMS staff. Live AI agent chat and LYRIC content generation are automatically enabled.</p>
-        <div style={{ padding:"12px 14px", borderRadius:8, background:C.surface, border:`1px solid ${C.green}30`, display:"flex", alignItems:"center", gap:8 }}>
+      <div style={{ background:currentColors.card, border:`1px solid ${currentColors.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
+        <h3 style={{ margin:"0 0 6px", fontSize:14, fontWeight:700, color:currentColors.textPrimary }}>AI Configuration</h3>
+        <p style={{ margin:"0 0 16px", fontSize:12, color:currentColors.textSecondary }}>Anthropic API key is managed server-side by AIMS staff. Live AI agent chat and LYRIC content generation are automatically enabled.</p>
+        <div style={{ padding:"12px 14px", borderRadius:8, background:currentColors.surface, border:`1px solid ${C.green}30`, display:"flex", alignItems:"center", gap:8 }}>
           <span style={{ fontSize:16 }}>✓</span>
           <div>
             <div style={{ fontSize:12, fontWeight:700, color:C.green }}>API Active</div>
-            <div style={{ fontSize:11, color:C.textSecondary }}>All AI features enabled</div>
+            <div style={{ fontSize:11, color:currentColors.textSecondary }}>All AI features enabled</div>
           </div>
         </div>
       </div>
 
       {/* Agent Voices — admin only */}
       {role === "admin" && orgId && (
-        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
-          <h3 style={{ margin:"0 0 6px", fontSize:14, fontWeight:700, color:C.textPrimary }}>Agent Voices</h3>
-          <p style={{ margin:"0 0 16px", fontSize:12, color:C.textSecondary }}>Choose a voice for each agent on outbound calls. Browse the catalog, preview the voice, and assign it here.</p>
+        <div style={{ background:currentColors.card, border:`1px solid ${currentColors.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
+          <h3 style={{ margin:"0 0 6px", fontSize:14, fontWeight:700, color:currentColors.textPrimary }}>Agent Voices</h3>
+          <p style={{ margin:"0 0 16px", fontSize:12, color:currentColors.textSecondary }}>Choose a voice for each agent on outbound calls. Browse the catalog, preview the voice, and assign it here.</p>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {AGENTS.map(a => (
-              <VoicePicker key={a.id} orgId={orgId} agentId={a.id} />
+              <VoicePicker key={a.id} orgId={orgId} agentId={a.id} currentColors={currentColors} />
             ))}
           </div>
         </div>
@@ -274,15 +293,15 @@ export default function Settings({ role, userEmail, orgId, onSignOut }) {
 
       {/* Agent Info — admin only */}
       {role === "admin" && (
-        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
-          <h3 style={{ margin:"0 0 16px", fontSize:14, fontWeight:700, color:C.textPrimary }}>Active Agents</h3>
+        <div style={{ background:currentColors.card, border:`1px solid ${currentColors.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
+          <h3 style={{ margin:"0 0 16px", fontSize:14, fontWeight:700, color:currentColors.textPrimary }}>Active Agents</h3>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
             {AGENTS.map(a => (
-              <div key={a.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:8, background:C.surface, border:`1px solid ${a.color}30` }}>
+              <div key={a.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:8, background:currentColors.surface, border:`1px solid ${a.color}30` }}>
                 <AgentAvatar agentId={a.id} size={36} />
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:13, fontWeight:700, color:a.color }}>{a.name}</div>
-                  <div style={{ fontSize:11, color:C.textSecondary }}>{a.role}</div>
+                  <div style={{ fontSize:11, color:currentColors.textSecondary }}>{a.role}</div>
                 </div>
                 <Badge color={C.green}>● Live</Badge>
               </div>
@@ -292,8 +311,8 @@ export default function Settings({ role, userEmail, orgId, onSignOut }) {
       )}
 
       {/* System Info */}
-      <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:24 }}>
-        <h3 style={{ margin:"0 0 14px", fontSize:14, fontWeight:700, color:C.textPrimary }}>System Information</h3>
+      <div style={{ background:currentColors.surface, border:`1px solid ${currentColors.border}`, borderRadius:12, padding:24 }}>
+        <h3 style={{ margin:"0 0 14px", fontSize:14, fontWeight:700, color:currentColors.textPrimary }}>System Information</h3>
         {[
           { label:"Platform", val:"AIMS AI Command Center v2.0" },
           { label:"Build",    val:"June 2026" },
@@ -301,9 +320,9 @@ export default function Settings({ role, userEmail, orgId, onSignOut }) {
           { label:"Agents",   val:"ARIA · MELODY · LYRIC · MUSE" },
           { label:"Company",  val:"AIMS Marketing Systems, Inc." },
         ].map(row => (
-          <div key={row.label} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
-            <span style={{ fontSize:12, color:C.textMuted }}>{row.label}</span>
-            <span style={{ fontSize:12, color:C.textPrimary, fontWeight:600 }}>{row.val}</span>
+          <div key={row.label} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${currentColors.border}` }}>
+            <span style={{ fontSize:12, color:currentColors.textMuted }}>{row.label}</span>
+            <span style={{ fontSize:12, color:currentColors.textPrimary, fontWeight:600 }}>{row.val}</span>
           </div>
         ))}
       </div>
