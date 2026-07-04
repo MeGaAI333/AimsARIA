@@ -18,6 +18,7 @@ interface GenerateRequest {
   industry: string;
   tone: string;
   content_type: string;
+  allow_recent?: boolean;
 }
 
 // Helper: Get day of week number (0=Sunday, 1=Monday, etc.)
@@ -60,15 +61,44 @@ function getScheduledDates(
   return dates;
 }
 
-// Call Claude to generate post content
+// Fetch recent posts (last 4 months) to avoid repetition
+async function getRecentPostTopics(
+  orgId: string,
+  allowRecent: boolean
+): Promise<string[]> {
+  if (allowRecent) return [];
+
+  const fourMonthsAgo = new Date();
+  fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
+
+  const { data, error } = await supabase
+    .from("lyric_posts")
+    .select("topic, copy")
+    .eq("org_id", orgId)
+    .eq("status", "published")
+    .gte("published_at", fourMonthsAgo.toISOString())
+    .limit(100);
+
+  if (error || !data) return [];
+
+  return data.map((post) => `${post.topic} - ${post.copy.slice(0, 100)}`);
+}
+
+// Call Claude to generate post content (avoiding recent topics)
 async function generatePostContent(
   topic: string,
   industry: string,
   tone: string,
   platform: string,
-  contentType: string
+  contentType: string,
+  recentPosts: string[] = []
 ): Promise<string> {
-  const prompt = `Generate a ${contentType} for ${platform} about "${topic}" for the ${industry} industry. Tone: ${tone}. Keep it concise and engaging.`;
+  const recentContext =
+    recentPosts.length > 0
+      ? `\n\nRecent posts we've published (avoid repeating these themes):\n${recentPosts.slice(0, 10).join("\n")}\n\nGenerate something fresh and different from the above.`
+      : "";
+
+  const prompt = `Generate a ${contentType} for ${platform} about "${topic}" for the ${industry} industry. Tone: ${tone}. Keep it concise and engaging.${recentContext}`;
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -108,7 +138,11 @@ serve(async (req) => {
       industry,
       tone,
       content_type,
+      allow_recent = false,
     } = body;
+
+    // Fetch recent posts to avoid repetition
+    const recentPosts = await getRecentPostTopics(org_id, allow_recent);
 
     // Generate schedule dates
     const startDt = new Date(start_date);
@@ -141,13 +175,14 @@ serve(async (req) => {
     // Generate a post for each scheduled date
     const posts = [];
     for (const schedDate of scheduledDates) {
-      // Generate content for this post
+      // Generate content for this post (avoiding recent topics)
       const copy = await generatePostContent(
         topic,
         industry,
         tone,
         platforms[0],
-        content_type
+        content_type,
+        recentPosts
       );
 
       // Create lyric post

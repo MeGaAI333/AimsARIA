@@ -107,6 +107,7 @@ function CreateScheduleRuleModal({ onClose, onCreate }) {
   const [time, setTime] = useState("09:00");
   const [duration, setDuration] = useState(30);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [allowRecent, setAllowRecent] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const daysList = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -122,6 +123,7 @@ function CreateScheduleRuleModal({ onClose, onCreate }) {
       time_of_day: time,
       duration_days: duration,
       start_date: startDate,
+      allow_recent: allowRecent,
     });
     setSaving(false);
   };
@@ -182,6 +184,14 @@ function CreateScheduleRuleModal({ onClose, onCreate }) {
             <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Start Date</label>
             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
               style={{ width:"100%", boxSizing:"border-box", padding:"9px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+          </div>
+
+          <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", background:C.surface, borderRadius:8, border:`1px solid ${C.border}` }}>
+            <input type="checkbox" id="allowRecent" checked={allowRecent} onChange={e => setAllowRecent(e.target.checked)}
+              style={{ cursor:"pointer", width:16, height:16 }} />
+            <label htmlFor="allowRecent" style={{ fontSize:12, color:C.textSecondary, cursor:"pointer", flex:1, margin:0 }}>
+              Allow content similar to posts from last 4 months
+            </label>
           </div>
 
           <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:8 }}>
