@@ -257,3 +257,80 @@ export async function getAllCommunications() {
   if (error) throw error;
   return data || [];
 }
+
+// ── LYRIC POSTS ────────────────────────────────────────────────────────────
+export async function getLyricPosts(orgId, startDate, endDate) {
+  const { data, error } = await supabase
+    .from("lyric_posts")
+    .select("*")
+    .eq("org_id", orgId)
+    .gte("scheduled_at", startDate.toISOString())
+    .lte("scheduled_at", endDate.toISOString())
+    .order("scheduled_at", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createLyricPost(post) {
+  const orgId = await getOrgId();
+  const record = orgId ? { ...post, org_id: orgId } : post;
+  const { data, error } = await supabase
+    .from("lyric_posts")
+    .insert([record])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateLyricPost(postId, updates) {
+  const { data, error } = await supabase
+    .from("lyric_posts")
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("id", postId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteLyricPost(postId) {
+  const { error } = await supabase.from("lyric_posts").delete().eq("id", postId);
+  if (error) throw error;
+}
+
+// ── SCHEDULE RULES ─────────────────────────────────────────────────────────
+export async function getScheduleRules(orgId) {
+  const { data, error } = await supabase
+    .from("schedule_rules")
+    .select("*")
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createScheduleRule(rule) {
+  const orgId = await getOrgId();
+  const record = orgId ? { ...rule, org_id: orgId } : rule;
+  const { data, error } = await supabase
+    .from("schedule_rules")
+    .insert([record])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateScheduleRule(ruleId, updates) {
+  const { error } = await supabase
+    .from("schedule_rules")
+    .update(updates)
+    .eq("id", ruleId);
+  if (error) throw error;
+}
+
+export async function deleteScheduleRule(ruleId) {
+  const { error } = await supabase.from("schedule_rules").delete().eq("id", ruleId);
+  if (error) throw error;
+}
