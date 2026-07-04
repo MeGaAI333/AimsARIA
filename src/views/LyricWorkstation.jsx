@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { C, AGENTS } from "../data.js";
 import { AgentAvatar, Badge } from "../components/utils.jsx";
-import { getProfile } from "../lib/db.js";
+import { getProfile, getLyricPosts, getScheduleRules, createScheduleRule, createLyricPost, updateLyricPost } from "../lib/db.js";
+import { supabase } from "../lib/supabase.js";
 
 const LYRIC = AGENTS.find(a => a.id === "lyric");
 const GREEN = "#39FF14";
@@ -98,6 +99,103 @@ const platIcon = { "All Platforms":"🌐", Facebook:"📘", Instagram:"📸", Li
 const typeIcon = { Post:"📝", "Reel Script":"🎬", Carousel:"🎠", Email:"📧", Newsletter:"📰", "Blog Post":"✍️" };
 
 const BRAND_PRESETS = ["#39FF14", "#FF0080", "#00B4FF", "#A855F7", "#F59E0B", "#FF4D4D"];
+
+function CreateScheduleRuleModal({ onClose, onCreate }) {
+  const [name, setName] = useState("");
+  const [platforms, setPlatforms] = useState([]);
+  const [days, setDays] = useState([]);
+  const [time, setTime] = useState("09:00");
+  const [duration, setDuration] = useState(30);
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [saving, setSaving] = useState(false);
+
+  const daysList = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  const platformsList = ["Facebook", "Instagram", "LinkedIn", "Twitter", "TikTok"];
+
+  const handleCreate = async () => {
+    if (!name.trim() || platforms.length === 0 || days.length === 0) return;
+    setSaving(true);
+    await onCreate({
+      name,
+      platforms: platforms.map(p => p.toLowerCase()),
+      days_of_week: days,
+      time_of_day: time,
+      duration_days: duration,
+      start_date: startDate,
+    });
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ width:520, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28, maxHeight:"90vh", overflowY:"auto" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Create Schedule Rule</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Rule Name *</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="E.g. Client A - Facebook Afternoons"
+              style={{ width:"100%", boxSizing:"border-box", padding:"9px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+          </div>
+
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6, display:"block" }}>Platforms *</label>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+              {platformsList.map(p => (
+                <button key={p} onClick={() => setPlatforms(platforms.includes(p) ? platforms.filter(x => x !== p) : [...platforms, p])}
+                  style={{ padding:"6px 12px", borderRadius:6, border:`1px solid ${platforms.includes(p) ? GREEN : C.border}`, background:platforms.includes(p) ? `${GREEN}15` : "transparent", color:platforms.includes(p) ? GREEN : C.textSecondary, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6, display:"block" }}>Days of Week *</label>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+              {daysList.map(d => (
+                <button key={d} onClick={() => setDays(days.includes(d) ? days.filter(x => x !== d) : [...days, d])}
+                  style={{ padding:"6px 8px", borderRadius:6, border:`1px solid ${days.includes(d) ? C.primary : C.border}`, background:days.includes(d) ? `${C.primary}15` : "transparent", color:days.includes(d) ? C.primary : C.textSecondary, fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                  {d.slice(0, 3).toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+            <div>
+              <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Time</label>
+              <input type="time" value={time} onChange={e => setTime(e.target.value)}
+                style={{ width:"100%", boxSizing:"border-box", padding:"9px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+            </div>
+            <div>
+              <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Duration (days)</label>
+              <input type="number" value={duration} onChange={e => setDuration(parseInt(e.target.value))} min="1"
+                style={{ width:"100%", boxSizing:"border-box", padding:"9px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Start Date</label>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+              style={{ width:"100%", boxSizing:"border-box", padding:"9px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+          </div>
+
+          <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:8 }}>
+            <button onClick={onClose} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>Cancel</button>
+            <button onClick={handleCreate} disabled={!name.trim() || platforms.length === 0 || days.length === 0 || saving}
+              style={{ padding:"9px 20px", borderRadius:8, border:"none", background:GREEN, color:"#000", fontSize:13, fontWeight:700, cursor:"pointer", opacity:(!name.trim() || platforms.length === 0 || days.length === 0 || saving) ? 0.6 : 1 }}>
+              {saving ? "Creating..." : "Create Rule"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function SchedulePostModal({ contentType, platform, topic, generated, onClose, onPublish, onSchedule }) {
   const [mode, setMode] = useState(null); // null | "now" | "later"
@@ -302,6 +400,17 @@ export default function LyricWorkstation({ orgId }) {
   const [brandColor, setBrandColor] = useState(GREEN);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduledPosts, setScheduledPosts] = useState([]);
+  const [calendarPosts, setCalendarPosts] = useState([]);
+  const [scheduleRules, setScheduleRules] = useState([]);
+  const [showRuleModal, setShowRuleModal] = useState(false);
+  const [calendarDateRange, setCalendarDateRange] = useState(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { start, end };
+  });
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [selectedPostForApproval, setSelectedPostForApproval] = useState(null);
 
   useEffect(() => {
     if (!orgId) return;
@@ -320,6 +429,18 @@ export default function LyricWorkstation({ orgId }) {
       }
     }).catch(() => {});
   }, [orgId]);
+
+  // Fetch calendar posts and schedule rules
+  useEffect(() => {
+    if (!orgId) return;
+    Promise.all([
+      getLyricPosts(orgId, calendarDateRange.start, calendarDateRange.end),
+      getScheduleRules(orgId)
+    ]).then(([posts, rules]) => {
+      setCalendarPosts(posts || []);
+      setScheduleRules(rules || []);
+    }).catch(err => console.error("Failed to fetch calendar data:", err));
+  }, [orgId, calendarDateRange]);
 
   // Remember each client's brand color locally so their carousels stay on-brand.
   useEffect(() => {
@@ -362,6 +483,21 @@ export default function LyricWorkstation({ orgId }) {
       brand_color: brandColor,
     };
     setScheduledPosts(prev => [post, ...prev]);
+  };
+
+  const handleCreateScheduleRule = async (ruleData) => {
+    if (!orgId) return;
+    try {
+      const result = await supabase.functions.invoke('generate-calendar-posts', {
+        body: { org_id: orgId, ...ruleData, topic, industry, tone, content_type: contentType }
+      });
+      if (result.data?.posts) {
+        setCalendarPosts(prev => [...prev, ...result.data.posts]);
+        setShowRuleModal(false);
+      }
+    } catch (e) {
+      console.error("Failed to create schedule rule:", e);
+    }
   };
 
   const generate = async () => {
@@ -429,10 +565,10 @@ export default function LyricWorkstation({ orgId }) {
           </div>
         </div>
         <div style={{ display:"flex", gap:0 }}>
-          {["create","schedule","published","analytics"].map(t => (
+          {["create","calendar","schedule","published","analytics"].map(t => (
             <button key={t} onClick={() => setTab(t)}
               style={{ padding:"10px 20px", border:"none", background:"transparent", color:tab===t?GREEN:C.textSecondary, fontSize:13, fontWeight:700, cursor:"pointer", borderBottom:`2px solid ${tab===t?GREEN:"transparent"}`, textTransform:"capitalize" }}>
-              {t === "create" ? "✨ Create" : t === "schedule" ? "📅 Schedule" : t === "published" ? "📡 Published" : "📊 Analytics"}
+              {t === "create" ? "✨ Create" : t === "calendar" ? "📅 Calendar" : t === "schedule" ? "📋 Schedule" : t === "published" ? "📡 Published" : "📊 Analytics"}
             </button>
           ))}
         </div>
@@ -613,6 +749,59 @@ export default function LyricWorkstation({ orgId }) {
           </div>
         )}
 
+        {tab === "calendar" && (
+          <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+              <h3 style={{ margin:0, fontSize:16, fontWeight:700, color:C.textPrimary }}>Social Calendar</h3>
+              <button onClick={() => setShowRuleModal(true)}
+                style={{ padding:"8px 16px", borderRadius:8, border:"none", background:GREEN, color:"#000", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                + New Schedule Rule
+              </button>
+            </div>
+
+            {scheduleRules.length === 0 ? (
+              <div style={{ textAlign:"center", paddingTop:60, color:C.textMuted }}>
+                <div style={{ fontSize:48, marginBottom:16 }}>📅</div>
+                <h4 style={{ margin:"0 0 8px", fontSize:16, fontWeight:700, color:C.textSecondary }}>No Schedule Rules Yet</h4>
+                <p style={{ margin:0, fontSize:13, maxWidth:340, lineHeight:1.6 }}>Create a schedule rule to automatically generate and post content on a recurring basis.</p>
+              </div>
+            ) : (
+              <div>
+                <div style={{ marginBottom:20 }}>
+                  <h4 style={{ margin:"0 0 12px", fontSize:13, fontWeight:700, color:C.textSecondary }}>Active Rules</h4>
+                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    {scheduleRules.map(rule => (
+                      <div key={rule.id} style={{ padding:"12px 14px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:8 }}>
+                        <div style={{ fontSize:13, fontWeight:700, color:C.textPrimary }}>{rule.name}</div>
+                        <div style={{ fontSize:11, color:C.textSecondary, marginTop:4 }}>
+                          {rule.platforms.join(", ")} • {rule.days_of_week.join(", ")} @ {rule.time_of_day}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 style={{ margin:"0 0 12px", fontSize:13, fontWeight:700, color:C.textSecondary }}>Upcoming Posts ({calendarPosts.length})</h4>
+                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    {calendarPosts.slice(0, 10).map(post => {
+                      const postDate = new Date(post.scheduled_at);
+                      return (
+                        <div key={post.id} style={{ padding:"12px 14px", background:C.surface, border:`1px solid ${C.border}`, borderLeft:`4px solid ${post.status === "published" ? C.green : GREEN}`, borderRadius:8 }}>
+                          <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary }}>{post.topic.slice(0, 40)}...</div>
+                          <div style={{ fontSize:11, color:C.textSecondary, marginTop:4 }}>
+                            {postDate.toLocaleDateString()} @ {postDate.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})} • {post.platform} • {post.status}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {tab === "schedule" && (
           <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%" }}>
             <h3 style={{ margin:"0 0 20px", fontSize:16, fontWeight:700, color:C.textPrimary }}>Scheduled Posts</h3>
@@ -696,6 +885,13 @@ export default function LyricWorkstation({ orgId }) {
               ))}
             </div>
           </div>
+        )}
+
+        {showRuleModal && (
+          <CreateScheduleRuleModal
+            onClose={() => setShowRuleModal(false)}
+            onCreate={handleCreateScheduleRule}
+          />
         )}
 
         {showScheduleModal && (
