@@ -1,5 +1,16 @@
 # AIMS AI Command Center — User Manual
-**AIMS Marketing Systems, Inc. · Version 2.0 · June 2026**
+**AIMS Marketing Systems, Inc. · Version 2.0 · July 2026**
+
+## Welcome to AIMS Command Center
+
+Your complete AI-powered platform for customer relationship management, marketing automation, and social content creation. Featuring:
+
+- **Full CRM System** — Manage contacts, tasks, notes, and communications
+- **LYRIC Workstation** — AI-powered content generation and automatic social media publishing
+- **AI Agents** — ARIA, MELODY, LYRIC, and MUSE working 24/7 for your business
+- **Multi-Platform Support** — Facebook, Instagram, LinkedIn, Twitter, TikTok, Email
+- **Automated Publishing** — Schedule content to publish automatically via Buffer
+- **Team Collaboration** — Invite team members with role-based access control
 
 ---
 
@@ -185,26 +196,107 @@ Click the agent's name in the sidebar under **AI AGENTS**.
 
 *Available to: Admin, LYRIC Client*
 
-The LYRIC Workstation is a dedicated content generation studio powered by AI.
+The LYRIC Workstation is a dedicated content generation studio powered by AI. It includes automated content creation, scheduling, approval workflows, and direct social media publishing via Buffer.
 
-### Generating Content
-1. Select a **Content Type** (Social Post, Email, Blog Post, Ad Copy, etc.)
-2. Choose your **Industry** (HVAC, Roofing, Legal, etc.) or type a custom one
-3. Select a **Tone** (Professional, Casual, Urgent, etc.)
-4. Add any **Additional Notes** (optional — specific angles, offers, keywords)
-5. Click **Generate Content**
+### Five Tabs
 
-### What Gets Generated
-- **Written content** — full copy ready to use or edit
-- **Visual concept** — an AI-generated image that matches the content, ideal for social media or ads
+#### **✨ Create Tab**
+Generate unique social content with AI.
 
-### Copying Your Content
-Click the **Copy** button below the generated text to copy it to your clipboard.
+1. Select a **Platform**: All Platforms, Facebook, Instagram, LinkedIn, Twitter, TikTok
+2. Choose a **Content Type**: 
+   - Post (social media post)
+   - Reel Script (short video script)
+   - Carousel (multi-slide post)
+   - Email (marketing email)
+   - Newsletter (monthly newsletter)
+   - Blog Post (long-form content)
+3. Select an **Industry** (12 pre-configured: Roofing, HVAC, Law Firm, Real Estate, MedSpa, CPA/Tax, Plumbing, Pest Control, Landscaping, Fence & Gate, Financial Services, Other)
+4. Enter a **Topic/Goal** (e.g., "Generate roofing leads before storm season")
+5. Choose a **Tone**: Authoritative, Educational, Conversational, Urgency-Driven
+6. For Carousels: Select a **Template Style**: Overlay, Panel, or Split
+7. Click **✨ Generate [Content Type]**
 
-### Regenerating
-Click **Generate Content** again at any time to produce a fresh variation.
+**What You Get:**
+- AI-generated copy tailored to your industry and platform
+- Auto-generated professional image that matches the content
+- Published preview showing how it will look on the platform
+- Copy button for quick clipboard access
+- Regenerate button to create variations
 
-> **Requires:** Anthropic API key set in Settings.
+#### **📅 Calendar Tab**
+Manage recurring content schedules and bulk post generation.
+
+**Creating a Schedule Rule:**
+1. Click **+ New Rule**
+2. Fill in:
+   - Rule Name (e.g., "Client A - Facebook Afternoons")
+   - Platforms (select one or more)
+   - Days of Week (Mon, Tue, Wed, etc.)
+   - Time of Day (09:00, 14:30, etc.)
+   - Duration (how many days to generate posts for)
+   - Start Date
+   - Allow Recent (toggle to allow similar content to recent posts, or require fresh content)
+3. Click **Create Rule**
+
+**What Happens:**
+- LYRIC automatically generates unique posts for each scheduled slot
+- Each post is different (content deduplication prevents repeating topics from last 4 months)
+- Posts appear in "Upcoming Posts" as drafts (amber border)
+
+**Reviewing Posts:**
+- Click **Review** on any draft post to open the Approval Modal
+- See full post details: topic, platform, content, images
+- **Approve** (✓) to move to pending status (blue border)
+- **Reject** to keep as draft and regenerate
+
+#### **📋 Schedule Tab**
+View posts waiting to be published.
+
+- Shows all **pending approval** and **scheduled** posts
+- Displays: Platform icon, topic, content type, scheduled date/time
+- Click any post to view full details in the Post Detail Modal
+- Filter by status to find what needs attention
+
+#### **📡 Published Tab**
+View all posts that have been published to social media.
+
+- Shows all **published** posts with green checkmark
+- Displays: Platform, topic, publish date, status
+- Click any post to view full details and performance metrics
+- Historical record of all content sent to clients' social accounts
+
+#### **📊 Analytics Tab**
+View content performance and engagement metrics.
+
+- **Summary Stats**: Posts published, avg engagement, email open rates, leads generated
+- **Platform Breakdown**: LinkedIn, Instagram, Facebook, Email with individual metrics
+- **Performance Tracking**: See which content types and platforms perform best
+
+### Complete Workflow
+
+1. **Generate** content in Create tab (AI creates unique copy + image)
+2. **Schedule** (optional) — Create recurring rules to bulk-generate multiple posts
+3. **Review** — Go to Calendar tab, review each draft post
+4. **Approve** — Click Approve to move post to "pending" status
+5. **Auto-Publish** — Scheduled-posting cron job automatically publishes at scheduled time
+6. **View Results** — Check Published tab to see live posts
+
+### Post Statuses
+
+- 🟡 **Draft** — Generated but not reviewed (amber)
+- 🔵 **Pending Approval** — Approved but awaiting scheduled time (blue)
+- 🟢 **Published** — Successfully posted to social media (green)
+- 🔴 **Failed** — Post failed to publish (red) — check error message
+
+### Copying & Sharing Content
+Click **Copy** to copy post text to your clipboard for manual posting, or approve for automatic Buffer publishing.
+
+### Brand Customization
+- **Brand Color Picker**: Choose from 6 presets or custom color for carousel templates
+- Colors persist per client for consistent visual branding
+
+> **Requires:** Anthropic API key set in Settings for content generation. Buffer API token set in Settings for automatic social media posting.
 
 ---
 
@@ -289,16 +381,52 @@ The Pricing section displays your service packages and pricing tiers for referen
 *Available to: All roles*
 
 ### Account Information
-Shows your email address and current role badge.
+Shows your email address and current role badge. Click **Sign Out** to log out.
+
+### Appearance
+**Theme Toggle**
+- Switch between 🌙 **Dark Mode** and ☀️ **Light Mode**
+- Your preference is saved automatically
+- Includes WCAG-compliant text contrast for accessibility
+
+### AI Configuration
+Shows if all AI features are enabled (always enabled for our system). Confirms that Claude API is active for content generation.
+
+### Buffer Integration
+*(Admin only)*
+
+Connect your Buffer account to automatically post LYRIC content to all social platforms (Facebook, Instagram, LinkedIn, Twitter, TikTok).
+
+**To Connect:**
+1. Go to **Buffer Developer Settings**: https://buffer.com/developers/api
+2. Generate an API token
+3. Paste it into the **Buffer API Token** field in Settings
+4. Click **Save Token**
+5. Connection status shows as **● Connected**
+
+**What Happens:**
+- When you approve a LYRIC post, it moves to "pending approval" status
+- Our scheduled cron job automatically posts it to Buffer at the scheduled time
+- Posts go to all selected platforms (Facebook, Instagram, LinkedIn, Twitter)
+- Post status automatically updates to "published"
+
+**To Disconnect:**
+1. Click **Disconnect** button in Buffer Integration section
+2. Confirm when prompted
+3. LYRIC will no longer auto-post to social media
+
+> **Note:** Without Buffer connected, you can still manually copy LYRIC content and post it yourself. Buffer connection enables automatic publishing.
 
 ### Anthropic API Key
-This is required to activate all AI features (agent chat, LYRIC content generation).
+*(Admin only)*
+
+This is required to activate all AI features (LYRIC content generation, agent chat).
 
 1. Go to **console.anthropic.com** and generate an API key
 2. Paste it into the **Anthropic API Key** field
 3. The key is saved automatically — you won't need to re-enter it after refreshing
 
-> **Security:** Your API key is stored only in your browser. It is never shared or sent to AIMS servers.
+> **Security:** Your API key is stored securely on the server. It is required for LYRIC content generation and agent interactions.
 
 ### Inviting Team Members & Clients
 *(Admin only)*
@@ -310,10 +438,36 @@ This is required to activate all AI features (agent chat, LYRIC content generati
 
 The invitee receives an email with a link to set their password. When they log in, their role and data access are automatically configured.
 
+**Access Levels:**
+- **Admin** — Full access to all views and all client data
+- **Client** — CRM, Pipeline, Calendar, Tasks, LYRIC, Settings (own org only)
+- **LYRIC Client** — LYRIC Workstation only + Settings
+- **User** — Conversations, Calendar, Tasks, Notes
+
+### Agent Voices
+*(Admin only)*
+
+Configure which AI voice each agent uses for outbound calls.
+
+1. Browse 100+ professional voices from Bland AI
+2. Preview any voice by clicking **▶**
+3. Click **Choose Voice** or **Change** to select a voice for that agent
+4. Selection is saved automatically
+
 ### Active Agents
 *(Admin only)*
 
-Shows all four AI agents with their live status.
+Shows all four AI agents with their live status and availability.
+
+| Agent | Role | Status |
+|-------|------|--------|
+| **ARIA** | Inbound lead capture & qualification | ● Active |
+| **MELODY** | Outbound prospecting & follow-up | ● Active |
+| **LYRIC** | Content creation & social media | ● Active |
+| **MUSE** | Strategy & analytics | ● Active |
+
+### System Information
+Shows platform version, build date, AI model, and company information.
 
 ---
 
@@ -334,25 +488,66 @@ Follow these steps to add a new client to the Command Center:
 
 ## 16. FAQ
 
+### Account & Access
 **Q: Why can't I see the CRM or AI Agents?**
-A: These sections are Admin-only. If you need access, ask your AIMS administrator to update your role.
-
-**Q: The AI isn't responding — what do I do?**
-A: Go to **Settings** and make sure your Anthropic API key is entered. If it is and still not working, your key may have expired — generate a new one at console.anthropic.com.
-
-**Q: I invited a client but they didn't receive an email.**
-A: Check their spam/junk folder. If it's not there, go to **Supabase Dashboard → Authentication → Users** to confirm the invite was created, then resend from there.
+A: These sections are Admin-only. If you need access, ask your AIMS administrator to update your role in Settings.
 
 **Q: Can a client see data I added for another client?**
-A: No. Data isolation is enforced at the database level — each client's data is completely separate. Admins can see all data.
+A: No. Data isolation is enforced at the database level — each client's data is completely separate. Admins can see all data across all clients.
 
 **Q: How do I change someone's role after they've been invited?**
-A: Go to **Supabase Dashboard → Authentication → Users**, click the user, and update their `role` field in the user metadata.
+A: Go to **Settings → Invite Team Member / Client**, or contact your AIMS admin to update user roles in the system.
 
-**Q: Do I need to re-enter my API key every time I log in?**
-A: No. Your API key is saved in your browser and persists across sessions.
+**Q: I invited a client but they didn't receive an email.**
+A: Check their spam/junk folder. If still not there, ask your AIMS admin to verify the invite in the system and resend if needed.
+
+### AI & Content Generation
+**Q: The AI isn't generating content — what do I do?**
+A: Go to **Settings** and make sure your **Anthropic API Key** is entered. If it is and still not working, your key may have expired — generate a new one at https://console.anthropic.com.
+
+**Q: Why is the Buffer connection showing as "not connected"?**
+A: Go to **Settings → Buffer Integration** and paste a valid Buffer API token from https://buffer.com/developers/api. Click **Save Token**.
+
+**Q: Will my posts be posted immediately or at the scheduled time?**
+A: Posts move to **pending approval** when approved. Our automated cron job checks every 5 minutes for posts ready to publish (scheduled_at time has arrived) and automatically posts them to Buffer. You'll see the status change to **published** once complete.
+
+**Q: What if Buffer fails to post a post?**
+A: The post status changes to **failed** with an error message. Go to the **Published** tab, click on the failed post to see the error. Common issues: Buffer token expired, platform disconnected in Buffer. Fix the issue and our system will retry automatically.
+
+### LYRIC Workstation
+**Q: Why do some posts have the same topic if I'm trying to avoid repetition?**
+A: You can use the same topic, but our AI ensures the content is different. This is done by passing recent posts as context so Claude generates fresh angles. For truly unique topics, enable "Allow Recent" when creating a schedule rule.
+
+**Q: Can I edit a post after it's approved but before it publishes?**
+A: Currently, you can reject it to revert to draft, then regenerate. Future versions will include edit capability.
+
+**Q: How do I schedule posts manually instead of using schedule rules?**
+A: In the **Create** tab, generate your content, then click the **Schedule →** button to choose a specific date and time. The post is created as scheduled and will be published automatically at that time.
+
+**Q: Can I post to multiple platforms at once?**
+A: Yes. When creating a schedule rule, select all platforms you want. Each post will be published to all selected platforms via Buffer. Individual posts can specify which platform to target.
+
+**Q: Where can I see the performance of published posts?**
+A: Go to **Published** tab to see all live posts, or check **Analytics** tab for summary metrics (engagement, reach, conversions by platform).
+
+### General
+**Q: How are my API keys protected?**
+A: 
+- Anthropic API Key: Required for content generation on the server
+- Buffer API Token: Stored securely in encrypted database, never exposed in frontend
+- API keys are never logged or shared
+
+**Q: What happens if I delete a schedule rule?**
+A: The rule is removed, but previously generated posts remain in the system. You can still approve/publish them individually, or delete them if you don't want them.
+
+**Q: Can I have multiple schedule rules for the same client?**
+A: Yes. Create different rules for different platforms, times, or days. All rules generate unique content and don't duplicate.
+
+**Q: How often does the scheduled posting run?**
+A: Every 5 minutes, our system checks for posts ready to publish and automatically posts them to Buffer. Posts publish within 5 minutes of their scheduled time.
 
 ---
 
 *For support, contact AIMS Marketing Systems.*
 *Platform: AIMS AI Command Center v2.0 · aimsai.aimsmarketingsystems.com*
+*Last Updated: July 5, 2026*
