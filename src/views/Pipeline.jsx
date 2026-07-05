@@ -571,8 +571,9 @@ function LeadDetailModal({ lead, communications, notes, onClose, onUpdate, onCom
             <div style={{ fontSize:16, fontWeight:800, color:C.textPrimary }}>${Number(lead.value||0).toLocaleString()}</div>
           </div>
           <div>
-            <div style={{ fontSize:10, color:C.textMuted, textTransform:"uppercase", marginBottom:4 }}>Lead Score</div>
-            <div style={{ fontSize:16, fontWeight:800, color:lead.score>=80?C.green:lead.score>=55?C.amber:C.red }}>{lead.score}</div>
+            <div style={{ fontSize:10, color:C.textMuted, textTransform:"uppercase", marginBottom:4 }}>Lead Score (Auto-Calculated)</div>
+            <div style={{ fontSize:16, fontWeight:800, color:calculateScore(lead)>=80?C.green:calculateScore(lead)>=55?C.amber:C.red }}>{calculateScore(lead)} 🤖</div>
+            <div style={{ fontSize:9, color:C.textMuted, marginTop:6 }}>Calculated from stage, communications, notes, deal value, and recency</div>
           </div>
           <div>
             <div style={{ fontSize:10, color:C.textMuted, textTransform:"uppercase", marginBottom:4 }}>Stage</div>
@@ -801,10 +802,38 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
     return matchesSearch;
   });
 
+  const calculateScore = (lead) => {
+    let score = Number(lead.score || 50);
+
+    const leadComms = communications.filter(c => c.contact_id === lead.id);
+    const completedComms = leadComms.filter(c => c.status === "completed").length;
+    const leadNotes = notes.filter(n => n.contact_id === lead.id).length;
+
+    const stageScores = { cold: 10, contacted: 30, qualified: 50, negotiating: 70, won: 100, lost: 0 };
+    const baseStageScore = stageScores[lead.stage] || 0;
+
+    const dealValue = Number(lead.value || 0);
+    const valueScore = Math.min(30, Math.floor(dealValue / 10000));
+
+    const lastContact = lead.last_contact ? new Date(lead.last_contact) : null;
+    const daysSinceContact = lastContact ? Math.floor((Date.now() - lastContact.getTime()) / (1000 * 60 * 60 * 24)) : 999;
+    let recencyScore = 20;
+    if (daysSinceContact <= 7) recencyScore = 20;
+    else if (daysSinceContact <= 30) recencyScore = 15;
+    else if (daysSinceContact <= 60) recencyScore = 10;
+    else recencyScore = 0;
+
+    const commScore = Math.min(20, completedComms * 3);
+    const noteScore = Math.min(10, leadNotes * 2);
+
+    const autoScore = Math.min(100, baseStageScore + valueScore + recencyScore + commScore + noteScore);
+    return Math.round(autoScore);
+  };
+
   const stats = {
     total: filtered.length,
     value: filtered.reduce((s,l) => s + Number(l.value||0), 0),
-    high_priority: filtered.filter(l => l.score >= 80).length,
+    high_priority: filtered.filter(l => calculateScore(l) >= 80).length,
   };
 
   return (
@@ -906,7 +935,10 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
                       <div style={{ fontSize:10, color:C.textSecondary, marginBottom:8 }}>{lead.industry||lead.company||"—"}</div>
                       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                         <span style={{ fontSize:12, fontWeight:700, color:C.textPrimary }}>${Number(lead.value||0).toLocaleString()}</span>
-                        <span style={{ fontSize:11, fontWeight:700, color:lead.score>=80?C.green:lead.score>=55?C.amber:C.red }}>{lead.score}</span>
+                        <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                          <span style={{ fontSize:11, fontWeight:700, color:calculateScore(lead)>=80?C.green:calculateScore(lead)>=55?C.amber:C.red }}>{calculateScore(lead)}</span>
+                          <span style={{ fontSize:9, color:C.textMuted }}>🤖</span>
+                        </div>
                       </div>
                       {(calls + texts + emails > 0) && (
                         <div style={{ fontSize:9, color:C.amber, marginBottom:6, display:"flex", gap:3 }}>
