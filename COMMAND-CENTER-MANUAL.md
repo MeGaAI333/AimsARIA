@@ -16,21 +16,22 @@ Your complete AI-powered platform for customer relationship management, marketin
 
 ## Table of Contents
 1. [Getting Started](#1-getting-started)
-2. [User Roles & Access](#2-user-roles--access)
-3. [Command Center Dashboard](#3-command-center-dashboard)
-4. [CRM — Contacts](#4-crm--contacts)
-5. [Pipeline](#5-pipeline)
-6. [Conversations](#6-conversations)
-7. [Campaigns](#7-campaigns)
-8. [AI Agents](#8-ai-agents)
-9. [LYRIC Workstation](#9-lyric-workstation)
-10. [Calendar](#10-calendar)
-11. [Tasks](#11-tasks)
-12. [Notes](#12-notes)
-13. [Pricing](#13-pricing)
-14. [Settings](#14-settings)
-15. [Onboarding a New Client](#15-onboarding-a-new-client)
-16. [FAQ](#16-faq)
+2. [Onboarding Hub](#2-onboarding-hub)
+3. [User Roles & Access](#3-user-roles--access)
+4. [Command Center Dashboard](#4-command-center-dashboard)
+5. [CRM — Contacts](#5-crm--contacts)
+6. [Pipeline](#6-pipeline)
+7. [Conversations](#7-conversations)
+8. [Campaigns](#8-campaigns)
+9. [AI Agents](#9-ai-agents)
+10. [LYRIC Workstation](#10-lyric-workstation)
+11. [Calendar](#11-calendar)
+12. [Tasks](#12-tasks)
+13. [Notes](#13-notes)
+14. [Pricing](#14-pricing)
+15. [Settings](#15-settings)
+16. [Onboarding a New Client](#16-onboarding-a-new-client)
+17. [FAQ](#17-faq)
 
 ---
 
@@ -49,7 +50,131 @@ Click **Sign Out** in the bottom-left corner of the sidebar, or go to **Settings
 
 ---
 
-## 2. User Roles & Access
+## 2. Onboarding Hub
+
+*Available to: Admin, Client*
+
+The **Onboarding Hub** (🎯 Get Started in sidebar) is your complete guided setup experience. It walks you through everything needed to launch your AI-powered sales and marketing system.
+
+### Four Integrated Sections
+
+#### **1. Onboarding Checklist**
+Visual progress dashboard showing 10 setup tasks organized by category.
+
+- **Setup & Configuration** (🔧) — API keys, brand voice, agents, notifications
+- **Marketing & Content** (📢) — First campaign, scheduling posts
+- **Team & Collaboration** (👥) — Invite team members
+- **Learning & Exploration** (🎓) — Explore all features
+
+**How it works:**
+- Click any task card to mark it complete (✓)
+- Track overall progress with percentage at top
+- Category progress bars show completion by section
+- Estimated 30-45 minutes to complete all tasks
+
+#### **2. Setup Wizard**
+Step-by-step guided configuration for your account.
+
+**The 5 Setup Steps:**
+
+1. **🔑 Connect API Keys**
+   - Anthropic API Key (for AI content generation)
+   - Buffer API Token (for automatic social posting)
+   - Get both free — just requires account setup
+
+2. **👥 Import Your First Contacts**
+   - Add leads one-by-one, or
+   - Upload CSV file with bulk contacts
+   - Format: Name, Email, Phone, Company, Industry, Deal Value
+
+3. **🎙 Configure Brand Voice**
+   - Brand name and description
+   - Tone selection (Professional, Friendly, Direct, Educational, Casual)
+   - Key phrases to use (e.g., "Let's transform your business")
+   - Phrases to avoid (e.g., "cheap", "used")
+
+4. **🤖 Activate AI Agents**
+   - Toggle on/off: ARIA (lead recovery), MELODY (closing), LYRIC (content), MUSE (reputation)
+   - All agents included with your plan
+   - Can be disabled anytime in Settings
+
+5. **📢 Create Your First Campaign**
+   - Campaign name and target audience
+   - Campaign goal (Generate Leads, Nurture, Close Deals, Build Awareness)
+   - Set up templates and targeting
+
+**How it works:**
+- Progress bar shows which step you're on
+- Click Next/Back to navigate
+- Steps can be completed in any order
+- Completion status shown at top
+
+#### **3. Interactive Tour**
+Visual walkthrough of all 8 major sections.
+
+**Tour Stops:**
+1. **📊 Dashboard** — Revenue metrics, pipeline summary, recent activity
+2. **📈 Pipeline** — Lead management with filtering, scoring, bulk actions
+3. **💬 Conversations** — AI-powered messaging and support
+4. **📢 Campaigns** — Marketing campaigns with templates and scheduling
+5. **✨ LYRIC Workstation** — AI content generation and publishing
+6. **📅 Calendar** — Event scheduling and team coordination
+7. **🤖 AI Agents** — Meet your 24/7 AI team
+8. **⚙️ Settings** — Configuration and integrations
+
+**How it works:**
+- Navigate through tour stops using Next/Back buttons
+- Read feature highlights for each section
+- Click "Go to Section" button to jump directly to feature
+- Jump grid at bottom allows quick access to any section
+
+#### **4. Quick Start Guides**
+Practical resources and step-by-step tutorials.
+
+**6 Quick Tips:**
+- 💡 Auto-Reply Setup
+- 📅 Schedule Rules
+- 📧 Bulk Email
+- 🎨 Custom Branding
+- ⏰ Notifications
+- 📱 Mobile Access
+
+**8 Step-by-Step Guides (Click to expand):**
+1. Getting Your First 10 Leads (15 min)
+2. Creating & Publishing Your First Post (10 min)
+3. Setting Up Your First Campaign (20 min)
+4. Inviting Team Members (5 min)
+5. Connecting Your Buffer Account (5 min)
+6. Using the AI Agents (15 min)
+7. Filtering & Exporting Leads (10 min)
+8. Understanding Lead Scoring (5 min)
+
+**Resource Links:**
+- 📚 Full User Manual
+- 💬 Contact Support
+- 🔑 Anthropic API Keys
+- 🔗 Buffer API
+
+### Recommended Path
+
+**First time?** Follow this path:
+1. Start with **Onboarding Checklist** — get overview of all tasks
+2. Follow **Setup Wizard** — complete the 5 main setup steps
+3. Take **Interactive Tour** — see features in action
+4. Refer to **Quick Start Guides** — detailed how-tos as needed
+5. Access **Settings** — fine-tune configurations
+
+### Tracking Progress
+
+Your completion status is saved automatically. You can:
+- Return to any incomplete task
+- Switch between tabs freely
+- Skip tasks and come back later
+- Mark tasks complete as you go
+
+---
+
+## 3. User Roles & Access
 
 There are four access levels. Each user is assigned a role when they are invited.
 
@@ -64,7 +189,7 @@ There are four access levels. Each user is assigned a role when they are invited
 
 ---
 
-## 3. Command Center Dashboard
+## 4. Command Center Dashboard
 
 The Dashboard is the home screen and gives a live overview of your revenue flywheel.
 
@@ -78,7 +203,7 @@ The Dashboard is the home screen and gives a live overview of your revenue flywh
 
 ---
 
-## 4. CRM — Contacts
+## 5. CRM — Contacts
 
 *Available to: Admin*
 
@@ -109,7 +234,7 @@ In the contact detail panel, use the **stage dropdown** at the top to move them 
 
 ---
 
-## 5. Pipeline
+## 6. Pipeline
 
 *Available to: Admin, Client*
 
@@ -127,7 +252,7 @@ The Pipeline is a Kanban-style board showing leads organized by stage.
 
 ---
 
-## 6. Conversations
+## 7. Conversations
 
 *Available to: Admin, Client, User*
 
@@ -145,7 +270,7 @@ If your Anthropic API key is set in Settings, the AI agents can assist with craf
 
 ---
 
-## 7. Campaigns
+## 8. Campaigns
 
 *Available to: Admin, Client*
 
@@ -157,7 +282,7 @@ Campaigns shows all active and scheduled marketing campaigns managed by the AI a
 
 ---
 
-## 8. AI Agents
+## 9. AI Agents
 
 *Available to: Admin*
 
@@ -192,7 +317,7 @@ Click the agent's name in the sidebar under **AI AGENTS**.
 
 ---
 
-## 9. LYRIC Workstation
+## 10. LYRIC Workstation
 
 *Available to: Admin, LYRIC Client*
 
@@ -300,7 +425,7 @@ Click **Copy** to copy post text to your clipboard for manual posting, or approv
 
 ---
 
-## 10. Calendar
+## 11. Calendar
 
 *Available to: Admin, Client*
 
@@ -327,7 +452,7 @@ Click the **✕** button on the right side of any event.
 
 ---
 
-## 11. Tasks
+## 12. Tasks
 
 *Available to: Admin, Client, User*
 
@@ -349,7 +474,7 @@ Click the **✕** button on the right side of any task.
 
 ---
 
-## 12. Notes
+## 13. Notes
 
 *Available to: Admin, Client*
 
@@ -368,7 +493,7 @@ Click the **✕** button on any note card.
 
 ---
 
-## 13. Pricing
+## 14. Pricing
 
 *Available to: Admin, Client*
 
@@ -376,7 +501,7 @@ The Pricing section displays your service packages and pricing tiers for referen
 
 ---
 
-## 14. Settings
+## 15. Settings
 
 *Available to: All roles*
 
@@ -471,7 +596,7 @@ Shows platform version, build date, AI model, and company information.
 
 ---
 
-## 15. Onboarding a New Client
+## 16. Onboarding a New Client
 
 Follow these steps to add a new client to the Command Center:
 
@@ -486,7 +611,7 @@ Follow these steps to add a new client to the Command Center:
 
 ---
 
-## 16. FAQ
+## 17. FAQ
 
 ### Account & Access
 **Q: Why can't I see the CRM or AI Agents?**
