@@ -5,6 +5,147 @@ import { getContacts, addContact, updateContact, getAllCommunications, logCommun
 
 const STAGE_COLORS = { cold:C.textSecondary, contacted:"#00B4FF", qualified:C.primary, negotiating:C.amber, won:C.green, lost:C.red };
 
+function BulkEmailModal({ selectedLeads, contacts, onClose, onSend }) {
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const selectedContacts = contacts.filter(c => selectedLeads.has(c.id));
+  const validRecipients = selectedContacts.filter(c => c.email?.trim());
+
+  const handleSend = async () => {
+    if (!subject.trim() || !body.trim() || validRecipients.length === 0) {
+      alert("Please fill in subject and body, and ensure selected leads have emails");
+      return;
+    }
+    setSending(true);
+    try {
+      await onSend({
+        recipients: validRecipients,
+        subject,
+        message: body,
+      });
+      onClose();
+    } catch (err) {
+      console.error("Failed to send bulk emails:", err);
+      alert("Failed to send emails. Please try again.");
+      setSending(false);
+    }
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1001 }}>
+      <div style={{ width:600, maxHeight:"90vh", overflow:"auto", background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Send Bulk Email</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+
+        <div style={{ marginBottom:16, padding:"12px", background:C.surface, borderRadius:8 }}>
+          <div style={{ fontSize:10, color:C.textMuted, textTransform:"uppercase", marginBottom:6 }}>Recipients ({validRecipients.length}/{selectedContacts.length})</div>
+          {validRecipients.length === 0 ? (
+            <div style={{ fontSize:12, fontWeight:600, color:C.red }}>⚠️ No selected leads with email addresses</div>
+          ) : (
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+              {validRecipients.map(c => (
+                <div key={c.id} style={{ fontSize:11, background:C.primary, color:"#fff", padding:"4px 8px", borderRadius:6, fontWeight:600 }}>
+                  {c.name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:16, marginBottom:20 }}>
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Subject</label>
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Email subject…"
+              style={{
+                width:"100%",
+                boxSizing:"border-box",
+                padding:"9px 12px",
+                borderRadius:8,
+                background:C.surface,
+                border:`1px solid ${C.border}`,
+                color:C.textPrimary,
+                fontSize:13,
+                outline:"none",
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Message</label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Compose your email… (will be sent to all selected leads)"
+              style={{
+                width:"100%",
+                boxSizing:"border-box",
+                padding:"10px 12px",
+                borderRadius:8,
+                background:C.surface,
+                border:`1px solid ${C.border}`,
+                color:C.textPrimary,
+                fontSize:13,
+                outline:"none",
+                fontFamily:"inherit",
+                minHeight:150,
+                resize:"vertical",
+              }}
+            />
+            <div style={{ fontSize:10, color:C.textMuted, marginTop:4 }}>{body.length} characters</div>
+          </div>
+        </div>
+
+        <div style={{ background:`${C.amber}15`, border:`1px solid ${C.amber}`, borderRadius:8, padding:12, marginBottom:20 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:C.amber, textTransform:"uppercase" }}>⚠️ Note</div>
+          <div style={{ fontSize:11, color:C.textSecondary, marginTop:6 }}>This will send the same email to all {validRecipients.length} selected leads. No personalization is applied.</div>
+        </div>
+
+        <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding:"9px 20px",
+              borderRadius:8,
+              border:`1px solid ${C.border}`,
+              background:"transparent",
+              color:C.textSecondary,
+              fontSize:13,
+              cursor:"pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={sending || !subject.trim() || !body.trim() || validRecipients.length === 0}
+            style={{
+              padding:"9px 20px",
+              borderRadius:8,
+              border:"none",
+              background:C.primary,
+              color:"#fff",
+              fontSize:13,
+              fontWeight:700,
+              cursor:"pointer",
+              opacity:sending || !subject.trim() || !body.trim() || validRecipients.length === 0?0.6:1,
+            }}
+          >
+            {sending?`Sending to ${validRecipients.length} leads…`:`Send to ${validRecipients.length} Leads`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EmailComposeModal({ lead, onClose, onSend }) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -457,6 +598,7 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
     maxValue: 999999,
     lastContactDays: null,
   });
+  const [showBulkEmail, setShowBulkEmail] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -484,6 +626,27 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
   const handleCommunicationSent = async () => {
     const updatedComms = await getAllCommunications().catch(() => []);
     setCommunications(updatedComms || []);
+  };
+
+  const handleBulkEmailSend = async (emailData) => {
+    try {
+      for (const recipient of emailData.recipients) {
+        await logCommunication({
+          contact_id: recipient.id,
+          channel: "email",
+          message: emailData.message,
+          status: "completed",
+          metadata: JSON.stringify({ subject: emailData.subject, to: recipient.email }),
+        });
+      }
+      setShowBulkEmail(false);
+      setSelectedLeads(new Set());
+      setBulkMode(false);
+      await handleCommunicationSent();
+    } catch (err) {
+      console.error("Failed to send bulk emails:", err);
+      throw err;
+    }
   };
 
   const toggleLeadSelection = (leadId) => {
@@ -619,7 +782,9 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
             {bulkProcessing ? "Updating…" : "Apply"}
           </button>}
 
-          <button onClick={() => { setSelectedLeads(new Set()); setBulkMode(false); }} style={{ padding:"6px 12px", borderRadius:6, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:11, cursor:"pointer", marginLeft:"auto" }}>Clear</button>
+          <button onClick={() => setShowBulkEmail(true)} style={{ padding:"6px 14px", borderRadius:6, border:`1px solid ${C.primary}`, background:`${C.primary}20`, color:C.primary, fontSize:11, fontWeight:700, cursor:"pointer", marginLeft:"auto" }}>✉️ Email</button>
+
+          <button onClick={() => { setSelectedLeads(new Set()); setBulkMode(false); }} style={{ padding:"6px 12px", borderRadius:6, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:11, cursor:"pointer" }}>Clear</button>
         </div>
       )}
 
@@ -685,6 +850,7 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
       {showAdd && <AddLeadModal onClose={()=>setShowAdd(false)} onSave={handleAdd} />}
       {selectedLead && <LeadDetailModal lead={selectedLead} communications={communications} onClose={()=>setSelected(null)} onUpdate={handleUpdate} onCommunicationSent={handleCommunicationSent} />}
       {showFilters && <FilterPanel filters={filters} setFilters={setFilters} onClose={()=>setShowFilters(false)} />}
+      {showBulkEmail && <BulkEmailModal selectedLeads={selectedLeads} contacts={contacts} onClose={()=>setShowBulkEmail(false)} onSend={handleBulkEmailSend} />}
     </div>
   );
 }
