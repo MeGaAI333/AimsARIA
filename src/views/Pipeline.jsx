@@ -59,6 +59,101 @@ function AddLeadModal({ onClose, onSave }) {
   );
 }
 
+function FilterPanel({ filters, setFilters, onClose }) {
+  const updateFilter = (key, value) => {
+    setFilters(p => ({ ...p, [key]: value }));
+  };
+
+  const activeCount = [
+    filters.stage,
+    filters.agent,
+    filters.minScore > 0,
+    filters.maxScore < 100,
+    filters.minValue > 0,
+    filters.maxValue < 999999,
+    filters.lastContactDays !== null,
+  ].filter(Boolean).length;
+
+  const resetFilters = () => {
+    setFilters({
+      stage: "",
+      agent: "",
+      minScore: 0,
+      maxScore: 100,
+      minValue: 0,
+      maxValue: 999999,
+      lastContactDays: null,
+    });
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ width:450, maxHeight:"90vh", overflow:"auto", background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Filter Leads {activeCount > 0 && <span style={{ fontSize:12, fontWeight:700, background:C.primary, color:"#fff", borderRadius:20, padding:"2px 8px", marginLeft:8 }}>{activeCount}</span>}</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:16, marginBottom:20 }}>
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Stage</label>
+            <select value={filters.stage} onChange={e => updateFilter("stage", e.target.value)}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none", cursor:"pointer" }}>
+              <option value="">All Stages</option>
+              {["cold","contacted","qualified","negotiating","won","lost"].map(s=><option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Agent</label>
+            <select value={filters.agent} onChange={e => updateFilter("agent", e.target.value)}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none", cursor:"pointer" }}>
+              <option value="">All Agents</option>
+              {["aria","melody","lyric","muse"].map(a=><option key={a} value={a}>{a.toUpperCase()}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Lead Score: {filters.minScore} - {filters.maxScore}</label>
+            <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+              <input type="range" min="0" max="100" value={filters.minScore} onChange={e => updateFilter("minScore", Number(e.target.value))}
+                style={{ flex:1, cursor:"pointer" }} />
+              <input type="range" min="0" max="100" value={filters.maxScore} onChange={e => updateFilter("maxScore", Number(e.target.value))}
+                style={{ flex:1, cursor:"pointer" }} />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Deal Value Range</label>
+            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+              <div style={{ flex:1 }}>
+                <input type="number" value={filters.minValue} onChange={e => updateFilter("minValue", Number(e.target.value))} placeholder="Min"
+                  style={{ width:"100%", padding:"9px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+              </div>
+              <span style={{ color:C.textMuted }}>—</span>
+              <div style={{ flex:1 }}>
+                <input type="number" value={filters.maxValue} onChange={e => updateFilter("maxValue", Number(e.target.value))} placeholder="Max"
+                  style={{ width:"100%", padding:"9px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Last Contact Within Days</label>
+            <input type="number" min="0" value={filters.lastContactDays || ""} onChange={e => updateFilter("lastContactDays", e.target.value ? Number(e.target.value) : null)} placeholder="Any"
+              style={{ width:"100%", padding:"9px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+          </div>
+        </div>
+
+        <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+          <button onClick={resetFilters} style={{ padding:"9px 16px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer", fontWeight:600 }}>Reset</button>
+          <button onClick={onClose} style={{ padding:"9px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer" }}>Done</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LeadDetailModal({ lead, communications, onClose, onUpdate }) {
   const [updates, setUpdates] = useState({});
   const [saving, setSaving] = useState(false);
@@ -151,6 +246,16 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
   const [bulkStage, setBulkStage] = useState("");
   const [bulkAgent, setBulkAgent] = useState("");
   const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    stage: "",
+    agent: "",
+    minScore: 0,
+    maxScore: 100,
+    minValue: 0,
+    maxValue: 999999,
+    lastContactDays: null,
+  });
 
   useEffect(() => {
     Promise.all([
@@ -213,11 +318,36 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
     setBulkProcessing(false);
   };
 
-  const filtered = contacts.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.company?.toLowerCase().includes(search.toLowerCase()) ||
-    c.industry?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = contacts.filter(c => {
+    // Search filter
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.company?.toLowerCase().includes(search.toLowerCase()) ||
+      c.industry?.toLowerCase().includes(search.toLowerCase());
+
+    // Stage filter
+    if (filters.stage && c.stage !== filters.stage) return false;
+
+    // Agent filter
+    if (filters.agent && c.assigned_to !== filters.agent) return false;
+
+    // Score filter
+    const score = Number(c.score || 0);
+    if (score < filters.minScore || score > filters.maxScore) return false;
+
+    // Value filter
+    const value = Number(c.value || 0);
+    if (value < filters.minValue || value > filters.maxValue) return false;
+
+    // Last contact days filter
+    if (filters.lastContactDays !== null) {
+      const lastContact = c.last_contact ? new Date(c.last_contact) : null;
+      if (!lastContact) return false;
+      const daysSinceContact = (Date.now() - lastContact.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceContact > filters.lastContactDays) return false;
+    }
+
+    return matchesSearch;
+  });
 
   const stats = {
     total: filtered.length,
@@ -251,6 +381,14 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
       <div style={{ marginBottom:20, display:"flex", gap:12, alignItems:"center" }}>
         <input type="text" placeholder="Search leads by name, company, or industry…" value={search} onChange={e=>setSearch(e.target.value)}
           style={{ flex:1, padding:"10px 14px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+        <button onClick={() => setShowFilters(!showFilters)} style={{ position:"relative", padding:"10px 16px", borderRadius:8, border:`1px solid ${showFilters?C.primary:C.border}`, background:showFilters?`${C.primary}15`:"transparent", color:showFilters?C.primary:C.textSecondary, fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}>
+          🔽 Filters
+          {[filters.stage, filters.agent, filters.minScore > 0, filters.maxScore < 100, filters.minValue > 0, filters.maxValue < 999999, filters.lastContactDays !== null].filter(Boolean).length > 0 && (
+            <span style={{ position:"absolute", top:-6, right:-6, background:C.primary, color:"#fff", fontSize:10, fontWeight:700, width:20, height:20, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              {[filters.stage, filters.agent, filters.minScore > 0, filters.maxScore < 100, filters.minValue > 0, filters.maxValue < 999999, filters.lastContactDays !== null].filter(Boolean).length}
+            </span>
+          )}
+        </button>
         <button onClick={() => { setBulkMode(!bulkMode); setSelectedLeads(new Set()); }} style={{ padding:"10px 16px", borderRadius:8, border:`1px solid ${bulkMode?C.primary:C.border}`, background:bulkMode?`${C.primary}15`:"transparent", color:bulkMode?C.primary:C.textSecondary, fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}>
           {bulkMode ? "✕ Bulk Off" : "✓ Bulk Mode"}
         </button>
@@ -340,6 +478,7 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
       )}
       {showAdd && <AddLeadModal onClose={()=>setShowAdd(false)} onSave={handleAdd} />}
       {selectedLead && <LeadDetailModal lead={selectedLead} communications={communications} onClose={()=>setSelected(null)} onUpdate={handleUpdate} />}
+      {showFilters && <FilterPanel filters={filters} setFilters={setFilters} onClose={()=>setShowFilters(false)} />}
     </div>
   );
 }
