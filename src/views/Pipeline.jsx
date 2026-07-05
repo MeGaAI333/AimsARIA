@@ -711,6 +711,7 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
     lastContactDays: null,
   });
   const [showBulkEmail, setShowBulkEmail] = useState(false);
+  const [quickEmailLead, setQuickEmailLead] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -747,6 +748,22 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
       setNotes(p => [newNote, ...p]);
     } catch (err) {
       console.error("Failed to add note:", err);
+      throw err;
+    }
+  };
+
+  const handleQuickEmail = async (emailData) => {
+    try {
+      await logCommunication({
+        contact_id: emailData.contact_id,
+        channel: "email",
+        message: emailData.message,
+        status: "completed",
+        metadata: JSON.stringify({ subject: emailData.subject, to: emailData.to }),
+      });
+      await handleCommunicationSent();
+    } catch (err) {
+      console.error("Failed to send email:", err);
       throw err;
     }
   };
@@ -993,9 +1010,16 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
                         style={{ width:"100%", padding:"4px 6px", borderRadius:5, border:`1px solid ${STAGE_COLORS[lead.stage]||C.border}`, background:C.surface, color:STAGE_COLORS[lead.stage]||C.textSecondary, fontSize:10, fontWeight:700, cursor:"pointer" }}>
                         {["cold","contacted","qualified","negotiating","won","lost"].map(s=><option key={s} value={s}>{s}</option>)}
                       </select>
-                      <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:7 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:7, marginBottom:8 }}>
                         {a && <><AgentAvatar agentId={a.id} size={14} /><span style={{ fontSize:9, color:a.color, fontWeight:700 }}>{a.name}</span></>}
                       </div>
+                      {!bulkMode && (
+                        <div style={{ display:"flex", gap:4, borderTop:`1px solid ${C.border}`, paddingTop:8 }}>
+                          <button onClick={(e) => { e.stopPropagation(); setQuickEmailLead(lead); }} style={{ flex:1, padding:"5px 6px", borderRadius:5, border:`1px solid ${C.border}`, background:"transparent", color:C.primary, fontSize:9, fontWeight:700, cursor:"pointer" }}>📧 Email</button>
+                          <button onClick={(e) => { e.stopPropagation(); alert("SMS coming soon!"); }} style={{ flex:1, padding:"5px 6px", borderRadius:5, border:`1px solid ${C.border}`, background:"transparent", color:C.amber, fontSize:9, fontWeight:700, cursor:"pointer" }}>💬 SMS</button>
+                          <button onClick={(e) => { e.stopPropagation(); setSelected(lead); }} style={{ flex:1, padding:"5px 6px", borderRadius:5, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:9, fontWeight:700, cursor:"pointer" }}>📋 View</button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1008,6 +1032,7 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
       {selectedLead && <LeadDetailModal lead={selectedLead} communications={communications} notes={notes} onClose={()=>setSelected(null)} onUpdate={handleUpdate} onCommunicationSent={handleCommunicationSent} onAddNote={handleAddNote} />}
       {showFilters && <FilterPanel filters={filters} setFilters={setFilters} onClose={()=>setShowFilters(false)} />}
       {showBulkEmail && <BulkEmailModal selectedLeads={selectedLeads} contacts={contacts} onClose={()=>setShowBulkEmail(false)} onSend={handleBulkEmailSend} />}
+      {quickEmailLead && <EmailComposeModal lead={quickEmailLead} onClose={() => setQuickEmailLead(null)} onSend={(emailData) => { handleQuickEmail(emailData).then(() => setQuickEmailLead(null)); }} />}
     </div>
   );
 }
