@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { C, AGENTS, PIPELINE_STAGES } from "../data.js";
 import { AgentAvatar, SectionHeader } from "../components/utils.jsx";
-import { getContacts, addContact, updateContact, getAllCommunications, logCommunication } from "../lib/db.js";
+import { getContacts, addContact, updateContact, getAllCommunications, logCommunication, getNotes, addNote } from "../lib/db.js";
 
 const STAGE_COLORS = { cold:C.textSecondary, contacted:"#00B4FF", qualified:C.primary, negotiating:C.amber, won:C.green, lost:C.red };
 
@@ -422,8 +422,9 @@ function FilterPanel({ filters, setFilters, onClose }) {
   );
 }
 
-function ActivityTimeline({ lead, communications }) {
+function ActivityTimeline({ lead, communications, notes }) {
   const leadComms = communications.filter(c => c.contact_id === lead.id);
+  const leadNotes = notes.filter(n => n.contact_id === lead.id);
 
   const activities = [
     ...leadComms.map(c => ({
@@ -434,13 +435,19 @@ function ActivityTimeline({ lead, communications }) {
       message: c.message,
       icon: c.channel === 'email' ? '📧' : c.channel === 'call' ? '☎️' : c.channel === 'sms' ? '💬' : c.channel === 'linkedin' ? '🔗' : '📨',
     })),
+    ...leadNotes.map(n => ({
+      type: 'note',
+      timestamp: n.created_at,
+      icon: '📌',
+      text: n.text,
+    })),
     {
       type: 'created',
       timestamp: lead.created_at,
       icon: '⭐',
       label: 'Lead created',
     }
-  ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 30);
+  ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 50);
 
   const formatTimeAgo = (timestamp) => {
     const now = new Date();
@@ -479,6 +486,14 @@ function ActivityTimeline({ lead, communications }) {
                       Status: <span style={{ fontWeight:700, color:activity.status==='completed'?C.green:activity.status==='failed'?C.red:C.amber }}>{activity.status}</span>
                     </div>
                   </>
+                ) : activity.type === 'note' ? (
+                  <>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"start", marginBottom:4 }}>
+                      <span style={{ fontSize:11, fontWeight:700, color:C.textPrimary }}>NOTE</span>
+                      <span style={{ fontSize:9, color:C.textMuted }}>{formatTimeAgo(activity.timestamp)}</span>
+                    </div>
+                    <div style={{ fontSize:11, color:C.textSecondary }}>{activity.text}</div>
+                  </>
                 ) : (
                   <>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -496,11 +511,25 @@ function ActivityTimeline({ lead, communications }) {
   );
 }
 
-function LeadDetailModal({ lead, communications, onClose, onUpdate, onCommunicationSent }) {
+function LeadDetailModal({ lead, communications, notes, onClose, onUpdate, onCommunicationSent, onAddNote }) {
   const [updates, setUpdates] = useState({});
   const [saving, setSaving] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
+  const [newNote, setNewNote] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
   const agent = AGENTS.find(a => a.id === lead.assigned_to);
+
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+    setAddingNote(true);
+    try {
+      await onAddNote({ contact_id: lead.id, text: newNote });
+      setNewNote("");
+    } catch (err) {
+      console.error("Failed to add note:", err);
+    }
+    setAddingNote(false);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -561,7 +590,49 @@ function LeadDetailModal({ lead, communications, onClose, onUpdate, onCommunicat
           </div>
         </div>
 
-        <ActivityTimeline lead={lead} communications={communications} />
+        <div style={{ marginBottom:20 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Add Note</label>
+          <div style={{ display:"flex", gap:8, alignItems:"flex-end" }}>
+            <textarea
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              placeholder="Add a note about this lead…"
+              style={{
+                flex:1,
+                padding:"9px 12px",
+                borderRadius:8,
+                background:C.surface,
+                border:`1px solid ${C.border}`,
+                color:C.textPrimary,
+                fontSize:12,
+                outline:"none",
+                fontFamily:"inherit",
+                minHeight:60,
+                resize:"none",
+              }}
+            />
+            <button
+              onClick={handleAddNote}
+              disabled={addingNote || !newNote.trim()}
+              style={{
+                padding:"9px 16px",
+                borderRadius:8,
+                border:"none",
+                background:C.primary,
+                color:"#fff",
+                fontSize:12,
+                fontWeight:700,
+                cursor:"pointer",
+                opacity:addingNote || !newNote.trim()?0.6:1,
+                whiteSpace:"nowrap",
+              }}
+            >
+              {addingNote?"Adding…":"Add"}
+            </button>
+          </div>
+        </div>
+
+        <ActivityTimeline lead={lead} communications={communications} notes={notes} />
 
         <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
           <button onClick={() => setShowEmailCompose(true)} style={{ padding:"9px 16px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>✉️ Email</button>
@@ -579,6 +650,7 @@ function LeadDetailModal({ lead, communications, onClose, onUpdate, onCommunicat
 export default function Pipeline({ setSelectedLead, setActiveTab }) {
   const [contacts, setContacts] = useState([]);
   const [communications, setCommunications] = useState([]);
+  const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [selectedLead, setSelected] = useState(null);
@@ -604,6 +676,7 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
     Promise.all([
       getContacts().then(d => setContacts(d)),
       getAllCommunications().catch(() => []).then(d => setCommunications(d || [])),
+      getNotes().catch(() => []).then(d => setNotes(d || [])),
     ]).then(() => setLoading(false)).catch(() => setLoading(false));
   }, []);
 
@@ -626,6 +699,16 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
   const handleCommunicationSent = async () => {
     const updatedComms = await getAllCommunications().catch(() => []);
     setCommunications(updatedComms || []);
+  };
+
+  const handleAddNote = async (noteData) => {
+    try {
+      const newNote = await addNote(noteData);
+      setNotes(p => [newNote, ...p]);
+    } catch (err) {
+      console.error("Failed to add note:", err);
+      throw err;
+    }
   };
 
   const handleBulkEmailSend = async (emailData) => {
@@ -848,7 +931,7 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
         </div>
       )}
       {showAdd && <AddLeadModal onClose={()=>setShowAdd(false)} onSave={handleAdd} />}
-      {selectedLead && <LeadDetailModal lead={selectedLead} communications={communications} onClose={()=>setSelected(null)} onUpdate={handleUpdate} onCommunicationSent={handleCommunicationSent} />}
+      {selectedLead && <LeadDetailModal lead={selectedLead} communications={communications} notes={notes} onClose={()=>setSelected(null)} onUpdate={handleUpdate} onCommunicationSent={handleCommunicationSent} onAddNote={handleAddNote} />}
       {showFilters && <FilterPanel filters={filters} setFilters={setFilters} onClose={()=>setShowFilters(false)} />}
       {showBulkEmail && <BulkEmailModal selectedLeads={selectedLeads} contacts={contacts} onClose={()=>setShowBulkEmail(false)} onSend={handleBulkEmailSend} />}
     </div>
