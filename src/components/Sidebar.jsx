@@ -4,6 +4,8 @@ import { AgentAvatar, PulsingDot } from "./utils.jsx";
 const ROLE_NAV = {
   admin: [
     { id:"dashboard",    icon:"⬡",  label:"Command Center" },
+    { divider:"SETUP" },
+    { id:"onboarding-hub", icon:"🎯", label:"Get Started" },
     { divider:"AIMS AI CRM" },
     { id:"crm",          icon:"👥",  label:"Contacts" },
     { id:"pipeline",     icon:"◈",   label:"Pipeline" },
@@ -21,7 +23,7 @@ const ROLE_NAV = {
     { id:"agent-allegra",  agentId:"allegra" },
     { divider:"MANAGEMENT" },
     { id:"analytics",      icon:"📊",  label:"Analytics" },
-    { id:"onboarding",     icon:"🚀",  label:"Onboarding" },
+    { id:"onboarding",     icon:"📋",  label:"Client Onboarding" },
     { id:"calendar",       icon:"📅",  label:"Calendar" },
     { id:"tasks",          icon:"✓",   label:"Tasks" },
     { id:"notes",          icon:"📝",  label:"Notes" },
@@ -32,7 +34,8 @@ const ROLE_NAV = {
   ],
   client: [
     { id:"dashboard",      icon:"⬡",  label:"Command Center" },
-    { id:"onboarding",     icon:"🚀",  label:"My Onboarding" },
+    { divider:"SETUP" },
+    { id:"onboarding-hub", icon:"🎯", label:"Get Started" },
     { id:"pipeline",       icon:"◈",   label:"Pipeline" },
     { id:"conversations",  icon:"💬",  label:"Conversations" },
     { id:"campaigns",      icon:"📡",  label:"Campaigns" },

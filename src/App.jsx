@@ -27,6 +27,7 @@ import Settings from "./views/Settings.jsx";
 import WorkQueue from "./views/WorkQueue.jsx";
 import ClientProfile from "./views/ClientProfile.jsx";
 import Onboarding from "./views/Onboarding.jsx";
+import OnboardingHub from "./views/OnboardingHub.jsx";
 
 export default function App() {
   const [session, setSession]           = useState(undefined); // undefined = loading
@@ -95,6 +96,7 @@ export default function App() {
       case "lyric-workstation": return <LyricWorkstation orgId={orgId} />;
       case "client-profile":    return <ClientProfile role={role} orgId={orgId} />;
       case "onboarding":        return <Onboarding role={role} orgId={orgId} />;
+      case "onboarding-hub":    return <OnboardingHub setActiveTab={navTo} />;
       case "calendar":          return <CalendarView />;
       case "tasks":             return <Tasks />;
       case "notes":             return <Notes />;
