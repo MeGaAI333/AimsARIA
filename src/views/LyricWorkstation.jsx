@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { C, AGENTS } from "../data.js";
 import { AgentAvatar, Badge } from "../components/utils.jsx";
+import EditDraftModal from "../components/EditDraftModal.jsx";
 import { getProfile, getLyricPosts, getScheduleRules, createScheduleRule, createLyricPost, updateLyricPost } from "../lib/db.js";
 import { supabase } from "../lib/supabase.js";
 
@@ -591,6 +592,8 @@ export default function LyricWorkstation({ orgId }) {
   const [selectedPostForApproval, setSelectedPostForApproval] = useState(null);
   const [selectedPostDetail, setSelectedPostDetail] = useState(null);
   const [showPostDetail, setShowPostDetail] = useState(false);
+  const [selectedDraft, setSelectedDraft] = useState(null);
+  const [showEditDraft, setShowEditDraft] = useState(false);
 
   useEffect(() => {
     if (!orgId) return;
@@ -1028,6 +1031,10 @@ export default function LyricWorkstation({ orgId }) {
                             </div>
                             {post.status === "draft" && (
                               <div style={{ display:"flex", gap:6, marginTop:8 }}>
+                                <button onClick={(e) => { e.stopPropagation(); setSelectedDraft(post); setShowEditDraft(true); }}
+                                  style={{ flex:1, fontSize:10, padding:"4px 8px", borderRadius:4, border:`1px solid ${C.amber}`, background:`${C.amber}12`, color:C.amber, cursor:"pointer", fontWeight:700 }}>
+                                  ✏️ Edit
+                                </button>
                                 <button onClick={(e) => { e.stopPropagation(); setSelectedPostForApproval(post); setShowApprovalModal(true); }}
                                   style={{ flex:1, fontSize:10, padding:"4px 8px", borderRadius:4, border:`1px solid ${GREEN}`, background:`${GREEN}12`, color:GREEN, cursor:"pointer", fontWeight:700 }}>
                                   Review
@@ -1180,6 +1187,23 @@ export default function LyricWorkstation({ orgId }) {
           <PostDetailModal
             post={selectedPostDetail}
             onClose={() => { setShowPostDetail(false); setSelectedPostDetail(null); }}
+          />
+        )}
+
+        {showEditDraft && selectedDraft && (
+          <EditDraftModal
+            post={selectedDraft}
+            onClose={() => { setShowEditDraft(false); setSelectedDraft(null); }}
+            onSave={async () => {
+              const [posts, rules] = await Promise.all([
+                getLyricPosts(orgId, calendarDateRange.start, calendarDateRange.end),
+                getScheduleRules(orgId)
+              ]);
+              setCalendarPosts(posts || []);
+              setScheduleRules(rules || []);
+              setShowEditDraft(false);
+              setSelectedDraft(null);
+            }}
           />
         )}
       </div>

@@ -146,6 +146,11 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
   const [showAdd, setShowAdd] = useState(false);
   const [selectedLead, setSelected] = useState(null);
   const [search, setSearch] = useState("");
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedLeads, setSelectedLeads] = useState(new Set());
+  const [bulkStage, setBulkStage] = useState("");
+  const [bulkAgent, setBulkAgent] = useState("");
+  const [bulkProcessing, setBulkProcessing] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -168,6 +173,44 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
   const handleUpdate = async (id, updates) => {
     await updateContact(id, updates);
     setContacts(p => p.map(c => c.id===id ? {...c,...updates} : c));
+  };
+
+  const toggleLeadSelection = (leadId) => {
+    const newSelected = new Set(selectedLeads);
+    if (newSelected.has(leadId)) {
+      newSelected.delete(leadId);
+    } else {
+      newSelected.add(leadId);
+    }
+    setSelectedLeads(newSelected);
+  };
+
+  const handleBulkStageChange = async () => {
+    if (!bulkStage || selectedLeads.size === 0) return;
+    setBulkProcessing(true);
+    try {
+      await Promise.all(Array.from(selectedLeads).map(id => updateContact(id, { stage: bulkStage })));
+      setContacts(p => p.map(c => selectedLeads.has(c.id) ? {...c, stage: bulkStage} : c));
+      setSelectedLeads(new Set());
+      setBulkMode(false);
+    } catch (err) {
+      console.error("Failed to update leads:", err);
+    }
+    setBulkProcessing(false);
+  };
+
+  const handleBulkAgentChange = async () => {
+    if (!bulkAgent || selectedLeads.size === 0) return;
+    setBulkProcessing(true);
+    try {
+      await Promise.all(Array.from(selectedLeads).map(id => updateContact(id, { assigned_to: bulkAgent })));
+      setContacts(p => p.map(c => selectedLeads.has(c.id) ? {...c, assigned_to: bulkAgent} : c));
+      setSelectedLeads(new Set());
+      setBulkMode(false);
+    } catch (err) {
+      console.error("Failed to update leads:", err);
+    }
+    setBulkProcessing(false);
   };
 
   const filtered = contacts.filter(c =>
@@ -205,10 +248,36 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
         </div>
       </div>
 
-      <div style={{ marginBottom:20 }}>
+      <div style={{ marginBottom:20, display:"flex", gap:12, alignItems:"center" }}>
         <input type="text" placeholder="Search leads by name, company, or industry…" value={search} onChange={e=>setSearch(e.target.value)}
-          style={{ width:"100%", padding:"10px 14px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+          style={{ flex:1, padding:"10px 14px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+        <button onClick={() => { setBulkMode(!bulkMode); setSelectedLeads(new Set()); }} style={{ padding:"10px 16px", borderRadius:8, border:`1px solid ${bulkMode?C.primary:C.border}`, background:bulkMode?`${C.primary}15`:"transparent", color:bulkMode?C.primary:C.textSecondary, fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}>
+          {bulkMode ? "✕ Bulk Off" : "✓ Bulk Mode"}
+        </button>
       </div>
+
+      {bulkMode && selectedLeads.size > 0 && (
+        <div style={{ background:`${C.primary}15`, border:`1px solid ${C.primary}`, borderRadius:10, padding:14, marginBottom:20, display:"flex", gap:12, alignItems:"center", flexWrap:"wrap" }}>
+          <span style={{ fontSize:12, fontWeight:700, color:C.primary }}>{selectedLeads.size} lead{selectedLeads.size !== 1 ? "s" : ""} selected</span>
+          <select value={bulkStage} onChange={e=>setBulkStage(e.target.value)} style={{ padding:"6px 10px", borderRadius:6, border:`1px solid ${C.primary}`, background:C.card, color:C.textPrimary, fontSize:11, cursor:"pointer" }}>
+            <option value="">Move to stage…</option>
+            {["cold","contacted","qualified","negotiating","won","lost"].map(s=><option key={s} value={s}>{s}</option>)}
+          </select>
+          {bulkStage && <button onClick={handleBulkStageChange} disabled={bulkProcessing} style={{ padding:"6px 14px", borderRadius:6, border:"none", background:C.primary, color:"#fff", fontSize:11, fontWeight:700, cursor:"pointer", opacity:bulkProcessing?0.6:1 }}>
+            {bulkProcessing ? "Updating…" : "Apply"}
+          </button>}
+
+          <select value={bulkAgent} onChange={e=>setBulkAgent(e.target.value)} style={{ padding:"6px 10px", borderRadius:6, border:`1px solid ${C.primary}`, background:C.card, color:C.textPrimary, fontSize:11, cursor:"pointer" }}>
+            <option value="">Assign to…</option>
+            {["aria","melody","lyric","muse"].map(a=><option key={a} value={a}>{a.toUpperCase()}</option>)}
+          </select>
+          {bulkAgent && <button onClick={handleBulkAgentChange} disabled={bulkProcessing} style={{ padding:"6px 14px", borderRadius:6, border:"none", background:C.primary, color:"#fff", fontSize:11, fontWeight:700, cursor:"pointer", opacity:bulkProcessing?0.6:1 }}>
+            {bulkProcessing ? "Updating…" : "Apply"}
+          </button>}
+
+          <button onClick={() => { setSelectedLeads(new Set()); setBulkMode(false); }} style={{ padding:"6px 12px", borderRadius:6, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:11, cursor:"pointer", marginLeft:"auto" }}>Clear</button>
+        </div>
+      )}
 
       {loading ? (
         <div style={{ textAlign:"center", color:C.textMuted, fontSize:13, paddingTop:60 }}>Loading…</div>
@@ -230,10 +299,17 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
                   const calls = leadComms.filter(c => c.channel === "call").length;
                   const texts = leadComms.filter(c => c.channel === "sms").length;
                   const emails = leadComms.filter(c => c.channel === "email").length;
+                  const isSelected = selectedLeads.has(lead.id);
                   return (
-                    <div key={lead.id} onClick={()=>setSelected(lead)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 11px", borderLeft:`3px solid ${a?.color||C.border}`, cursor:"pointer" }}
-                      onMouseEnter={e=>e.currentTarget.style.background=C.surface}
-                      onMouseLeave={e=>e.currentTarget.style.background=C.card}>
+                    <div key={lead.id} onClick={() => bulkMode ? toggleLeadSelection(lead.id) : setSelected(lead)} style={{ background:isSelected?`${C.primary}20`:C.card, border:`1px solid ${isSelected?C.primary:C.border}`, borderRadius:8, padding:"10px 11px", borderLeft:`3px solid ${isSelected?C.primary:a?.color||C.border}`, cursor:"pointer" }}
+                      onMouseEnter={e=>e.currentTarget.style.background=isSelected?`${C.primary}20`:C.surface}
+                      onMouseLeave={e=>e.currentTarget.style.background=isSelected?`${C.primary}20`:C.card}>
+                      {bulkMode && (
+                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                          <input type="checkbox" checked={isSelected} onChange={() => toggleLeadSelection(lead.id)} style={{ cursor:"pointer", width:16, height:16 }} />
+                          <span style={{ fontSize:10, color:C.textMuted }}>{isSelected ? "Selected" : "Select"}</span>
+                        </div>
+                      )}
                       <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary, marginBottom:2 }}>{lead.name}</div>
                       <div style={{ fontSize:10, color:C.textSecondary, marginBottom:8 }}>{lead.industry||lead.company||"—"}</div>
                       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
