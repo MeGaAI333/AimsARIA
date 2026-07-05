@@ -207,6 +207,91 @@ function CreateScheduleRuleModal({ onClose, onCreate }) {
   );
 }
 
+function ApprovalModal({ post, onClose, onApprove, onReject }) {
+  const [saving, setSaving] = useState(false);
+
+  const handleApprove = async () => {
+    setSaving(true);
+    await onApprove(post.id);
+    setSaving(false);
+    onClose();
+  };
+
+  const handleReject = async () => {
+    setSaving(true);
+    await onReject(post.id);
+    setSaving(false);
+    onClose();
+  };
+
+  if (!post) return null;
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ width:600, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28, maxHeight:"90vh", overflowY:"auto" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Review Post</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          <div>
+            <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Topic</div>
+            <div style={{ fontSize:13, color:C.textPrimary, fontWeight:600 }}>{post.topic}</div>
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Platform</div>
+              <div style={{ fontSize:13, color:C.textPrimary }}>{post.platform}</div>
+            </div>
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Type</div>
+              <div style={{ fontSize:13, color:C.textPrimary }}>{post.content_type}</div>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Scheduled For</div>
+            <div style={{ fontSize:13, color:C.textPrimary }}>
+              {new Date(post.scheduled_at).toLocaleDateString()} @ {new Date(post.scheduled_at).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}
+            </div>
+          </div>
+
+          <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:14 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Content Preview</div>
+            <div style={{ fontSize:12, color:C.textSecondary, lineHeight:1.6, maxHeight:200, overflowY:"auto", whiteSpace:"pre-wrap" }}>
+              {post.copy}
+            </div>
+          </div>
+
+          {post.images && post.images.length > 0 && (
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Visual</div>
+              <div style={{ display:"flex", gap:8, overflowX:"auto" }}>
+                {post.images.map((img, i) => (
+                  <img key={i} src={img} alt="preview" style={{ maxWidth:120, maxHeight:120, borderRadius:8, objectFit:"cover" }} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:8 }}>
+            <button onClick={handleReject} disabled={saving}
+              style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.red, fontSize:13, cursor:"pointer", opacity:saving?0.6:1 }}>
+              Reject
+            </button>
+            <button onClick={handleApprove} disabled={saving}
+              style={{ padding:"9px 20px", borderRadius:8, border:"none", background:GREEN, color:"#000", fontSize:13, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>
+              {saving ? "Approving…" : "✓ Approve"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SchedulePostModal({ contentType, platform, topic, generated, onClose, onPublish, onSchedule }) {
   const [mode, setMode] = useState(null); // null | "now" | "later"
   const [scheduleDate, setScheduleDate] = useState("");
@@ -421,6 +506,8 @@ export default function LyricWorkstation({ orgId }) {
   });
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [selectedPostForApproval, setSelectedPostForApproval] = useState(null);
+  const [selectedPostDetail, setSelectedPostDetail] = useState(null);
+  const [showPostDetail, setShowPostDetail] = useState(false);
 
   useEffect(() => {
     if (!orgId) return;
@@ -507,6 +594,37 @@ export default function LyricWorkstation({ orgId }) {
       }
     } catch (e) {
       console.error("Failed to create schedule rule:", e);
+    }
+  };
+
+  const handleApprovePost = async (postId) => {
+    try {
+      await updateLyricPost(postId, { status: "pending_approval" });
+      setCalendarPosts(prev => prev.map(p => p.id === postId ? { ...p, status: "pending_approval" } : p));
+      setShowApprovalModal(false);
+    } catch (e) {
+      console.error("Failed to approve post:", e);
+    }
+  };
+
+  const handleRejectPost = async (postId) => {
+    try {
+      await updateLyricPost(postId, { status: "draft" });
+      setCalendarPosts(prev => prev.map(p => p.id === postId ? { ...p, status: "draft" } : p));
+      setShowApprovalModal(false);
+    } catch (e) {
+      console.error("Failed to reject post:", e);
+    }
+  };
+
+  const handleApproveAll = async () => {
+    try {
+      for (const post of calendarPosts.filter(p => p.status === "draft")) {
+        await updateLyricPost(post.id, { status: "pending_approval" });
+      }
+      setCalendarPosts(prev => prev.map(p => p.status === "draft" ? { ...p, status: "pending_approval" } : p));
+    } catch (e) {
+      console.error("Failed to approve all posts:", e);
     }
   };
 
@@ -762,11 +880,22 @@ export default function LyricWorkstation({ orgId }) {
         {tab === "calendar" && (
           <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
-              <h3 style={{ margin:0, fontSize:16, fontWeight:700, color:C.textPrimary }}>Social Calendar</h3>
-              <button onClick={() => setShowRuleModal(true)}
-                style={{ padding:"8px 16px", borderRadius:8, border:"none", background:GREEN, color:"#000", fontSize:13, fontWeight:700, cursor:"pointer" }}>
-                + New Schedule Rule
-              </button>
+              <div>
+                <h3 style={{ margin:"0 0 4px", fontSize:16, fontWeight:700, color:C.textPrimary }}>Social Calendar</h3>
+                <p style={{ margin:0, fontSize:12, color:C.textSecondary }}>Draft: {calendarPosts.filter(p => p.status === "draft").length} | Pending: {calendarPosts.filter(p => p.status === "pending_approval").length} | Published: {calendarPosts.filter(p => p.status === "published").length}</p>
+              </div>
+              <div style={{ display:"flex", gap:8 }}>
+                {calendarPosts.filter(p => p.status === "draft").length > 0 && (
+                  <button onClick={handleApproveAll}
+                    style={{ padding:"8px 16px", borderRadius:8, border:`1px solid ${GREEN}`, background:`${GREEN}15`, color:GREEN, fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                    ✓ Approve All ({calendarPosts.filter(p => p.status === "draft").length})
+                  </button>
+                )}
+                <button onClick={() => setShowRuleModal(true)}
+                  style={{ padding:"8px 16px", borderRadius:8, border:"none", background:GREEN, color:"#000", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                  + New Rule
+                </button>
+              </div>
             </div>
 
             {scheduleRules.length === 0 ? (
@@ -776,15 +905,16 @@ export default function LyricWorkstation({ orgId }) {
                 <p style={{ margin:0, fontSize:13, maxWidth:340, lineHeight:1.6 }}>Create a schedule rule to automatically generate and post content on a recurring basis.</p>
               </div>
             ) : (
-              <div>
-                <div style={{ marginBottom:20 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:20 }}>
+                <div>
                   <h4 style={{ margin:"0 0 12px", fontSize:13, fontWeight:700, color:C.textSecondary }}>Active Rules</h4>
                   <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                     {scheduleRules.map(rule => (
                       <div key={rule.id} style={{ padding:"12px 14px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:8 }}>
-                        <div style={{ fontSize:13, fontWeight:700, color:C.textPrimary }}>{rule.name}</div>
-                        <div style={{ fontSize:11, color:C.textSecondary, marginTop:4 }}>
-                          {rule.platforms.join(", ")} • {rule.days_of_week.join(", ")} @ {rule.time_of_day}
+                        <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary }}>{rule.name}</div>
+                        <div style={{ fontSize:10, color:C.textSecondary, marginTop:4, lineHeight:1.4 }}>
+                          {rule.platforms.map(p => platIcon[p.charAt(0).toUpperCase() + p.slice(1)] || "📱").join("")} {rule.platforms.join(", ")}<br/>
+                          {rule.days_of_week.map(d => d.slice(0,3)).join(", ")} @ {rule.time_of_day}
                         </div>
                       </div>
                     ))}
@@ -792,19 +922,39 @@ export default function LyricWorkstation({ orgId }) {
                 </div>
 
                 <div>
-                  <h4 style={{ margin:"0 0 12px", fontSize:13, fontWeight:700, color:C.textSecondary }}>Upcoming Posts ({calendarPosts.length})</h4>
-                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                    {calendarPosts.slice(0, 10).map(post => {
-                      const postDate = new Date(post.scheduled_at);
-                      return (
-                        <div key={post.id} style={{ padding:"12px 14px", background:C.surface, border:`1px solid ${C.border}`, borderLeft:`4px solid ${post.status === "published" ? C.green : GREEN}`, borderRadius:8 }}>
-                          <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary }}>{post.topic.slice(0, 40)}...</div>
-                          <div style={{ fontSize:11, color:C.textSecondary, marginTop:4 }}>
-                            {postDate.toLocaleDateString()} @ {postDate.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})} • {post.platform} • {post.status}
+                  <h4 style={{ margin:"0 0 12px", fontSize:13, fontWeight:700, color:C.textSecondary }}>Upcoming Posts</h4>
+                  <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:500, overflowY:"auto" }}>
+                    {calendarPosts.length === 0 ? (
+                      <div style={{ padding:20, textAlign:"center", color:C.textMuted, fontSize:12 }}>No posts generated yet</div>
+                    ) : (
+                      calendarPosts.map(post => {
+                        const postDate = new Date(post.scheduled_at);
+                        const statusColor = post.status === "draft" ? C.amber : post.status === "pending_approval" ? C.primary : post.status === "published" ? C.green : C.red;
+                        return (
+                          <div key={post.id} style={{ padding:"12px 14px", background:C.surface, border:`1px solid ${C.border}`, borderLeft:`4px solid ${statusColor}`, borderRadius:8, cursor:"pointer" }} onClick={() => { setSelectedPostDetail(post); setShowPostDetail(true); }}>
+                            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"start" }}>
+                              <div style={{ flex:1 }}>
+                                <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary }}>{post.topic.slice(0, 35)}</div>
+                                <div style={{ fontSize:10, color:C.textSecondary, marginTop:4 }}>
+                                  {postDate.toLocaleDateString()} @ {postDate.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}
+                                </div>
+                              </div>
+                              <span style={{ fontSize:10, padding:"3px 8px", borderRadius:4, background:`${statusColor}15`, color:statusColor, fontWeight:700, whiteSpace:"nowrap" }}>
+                                {post.status}
+                              </span>
+                            </div>
+                            {post.status === "draft" && (
+                              <div style={{ display:"flex", gap:6, marginTop:8 }}>
+                                <button onClick={(e) => { e.stopPropagation(); setSelectedPostForApproval(post); setShowApprovalModal(true); }}
+                                  style={{ flex:1, fontSize:10, padding:"4px 8px", borderRadius:4, border:`1px solid ${GREEN}`, background:`${GREEN}12`, color:GREEN, cursor:"pointer", fontWeight:700 }}>
+                                  Review
+                                </button>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               </div>
