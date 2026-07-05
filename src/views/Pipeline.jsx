@@ -154,10 +154,83 @@ function FilterPanel({ filters, setFilters, onClose }) {
   );
 }
 
+function ActivityTimeline({ lead, communications }) {
+  const leadComms = communications.filter(c => c.contact_id === lead.id);
+
+  const activities = [
+    ...leadComms.map(c => ({
+      type: 'communication',
+      timestamp: c.created_at,
+      channel: c.channel,
+      status: c.status,
+      message: c.message,
+      icon: c.channel === 'email' ? '📧' : c.channel === 'call' ? '☎️' : c.channel === 'sms' ? '💬' : c.channel === 'linkedin' ? '🔗' : '📨',
+    })),
+    {
+      type: 'created',
+      timestamp: lead.created_at,
+      icon: '⭐',
+      label: 'Lead created',
+    }
+  ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 30);
+
+  const formatTimeAgo = (timestamp) => {
+    const now = new Date();
+    const date = new Date(timestamp);
+    const seconds = Math.floor((now - date) / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (seconds < 60) return 'just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  return (
+    <div style={{ marginBottom:20 }}>
+      <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary, marginBottom:12 }}>📋 Activity Timeline</div>
+      {activities.length === 0 ? (
+        <div style={{ padding:"16px", background:C.surface, borderRadius:8, color:C.textMuted, fontSize:12, textAlign:"center" }}>No activity yet</div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {activities.map((activity, idx) => (
+            <div key={`${activity.type}-${idx}`} style={{ display:"flex", gap:12, padding:"12px", background:C.surface, borderRadius:8 }}>
+              <div style={{ fontSize:16, flexShrink:0 }}>{activity.icon}</div>
+              <div style={{ flex:1 }}>
+                {activity.type === 'communication' ? (
+                  <>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"start", marginBottom:4 }}>
+                      <span style={{ fontSize:11, fontWeight:700, color:C.textPrimary }}>{activity.channel.toUpperCase()}</span>
+                      <span style={{ fontSize:9, color:C.textMuted }}>{formatTimeAgo(activity.timestamp)}</span>
+                    </div>
+                    <div style={{ fontSize:11, color:C.textSecondary, marginBottom:4 }}>{activity.message?.substring(0,100) || "No message"}</div>
+                    <div style={{ fontSize:9, color:C.textMuted }}>
+                      Status: <span style={{ fontWeight:700, color:activity.status==='completed'?C.green:activity.status==='failed'?C.red:C.amber }}>{activity.status}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <span style={{ fontSize:11, fontWeight:700, color:C.textPrimary }}>{activity.label}</span>
+                      <span style={{ fontSize:9, color:C.textMuted }}>{formatTimeAgo(activity.timestamp)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LeadDetailModal({ lead, communications, onClose, onUpdate }) {
   const [updates, setUpdates] = useState({});
   const [saving, setSaving] = useState(false);
-  const leadComms = communications.filter(c => c.contact_id === lead.id).slice(0, 20);
   const agent = AGENTS.find(a => a.id === lead.assigned_to);
 
   const handleSave = async () => {
@@ -203,25 +276,7 @@ function LeadDetailModal({ lead, communications, onClose, onUpdate }) {
           </div>
         </div>
 
-        <div style={{ marginBottom:20 }}>
-          <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary, marginBottom:12 }}>📞 Communication History</div>
-          {leadComms.length === 0 ? (
-            <div style={{ padding:"16px", background:C.surface, borderRadius:8, color:C.textMuted, fontSize:12, textAlign:"center" }}>No communications yet</div>
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              {leadComms.map(comm => (
-                <div key={comm.id} style={{ padding:"10px", background:C.surface, borderRadius:8, borderLeft:`3px solid ${comm.status==='completed'?C.green:comm.status==='failed'?C.red:C.amber}` }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"start", marginBottom:4 }}>
-                    <span style={{ fontSize:11, fontWeight:700, color:C.textPrimary }}>{comm.channel.toUpperCase()}</span>
-                    <span style={{ fontSize:10, color:C.textMuted }}>{new Date(comm.created_at).toLocaleDateString()}</span>
-                  </div>
-                  <div style={{ fontSize:11, color:C.textSecondary, marginBottom:4 }}>{comm.message?.substring(0,80)}{"..."}</div>
-                  <div style={{ fontSize:9, color:C.textMuted }}>Status: <span style={{ fontWeight:700, color:comm.status==='completed'?C.green:C.amber }}>{comm.status}</span></div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <ActivityTimeline lead={lead} communications={communications} />
 
         <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
           <button onClick={onClose} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>Close</button>
