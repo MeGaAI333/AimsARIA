@@ -1,8 +1,8 @@
 // ── COLORS ───────────────────────────────────────────────────────────────────
 export const THEMES = {
   dark: {
-    bg: "#06091A", sidebar: "#090D22", surface: "#0C1128", card: "#101630",
-    border: "#1A2550", borderHover: "#2A3D78",
+    bg: "#0F1625", sidebar: "#131B2E", surface: "#1A2847", card: "#202E4A",
+    border: "#2A3D5C", borderHover: "#3A4F7A",
     primary: "#4F7EFF", primaryDim: "#121D50",
     green: "#10B981", greenDim: "#082B1E",
     amber: "#F59E0B", amberDim: "#3A2000",
