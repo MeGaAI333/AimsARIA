@@ -19,6 +19,7 @@ import LyricWorkstation from "./views/LyricWorkstation.jsx";
 import CalendarView from "./views/Calendar.jsx";
 import Tasks from "./views/Tasks.jsx";
 import Notes from "./views/Notes.jsx";
+import CommunicationLogs from "./views/CommunicationLogs.jsx";
 import Pricing from "./views/Pricing.jsx";
 import Settings from "./views/Settings.jsx";
 import WorkQueue from "./views/WorkQueue.jsx";
@@ -95,6 +96,7 @@ export default function App() {
       case "calendar":          return <CalendarView />;
       case "tasks":             return <Tasks />;
       case "notes":             return <Notes />;
+      case "communication-logs": return <CommunicationLogs />;
       case "pricing":           return <Pricing />;
       case "settings":          return <Settings role={role} userEmail={session.user.email} orgId={orgId} theme={theme} onThemeToggle={toggleTheme} onSignOut={handleSignOut} />;
       default:                  return <Dashboard leads={leads} setActiveTab={navTo} setSelectedLead={setSelectedLead} />;

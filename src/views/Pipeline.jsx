@@ -59,11 +59,93 @@ function AddLeadModal({ onClose, onSave }) {
   );
 }
 
+function LeadDetailModal({ lead, communications, onClose, onUpdate }) {
+  const [updates, setUpdates] = useState({});
+  const [saving, setSaving] = useState(false);
+  const leadComms = communications.filter(c => c.contact_id === lead.id).slice(0, 20);
+  const agent = AGENTS.find(a => a.id === lead.assigned_to);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onUpdate(lead.id, updates);
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ width:600, maxHeight:"90vh", overflow:"auto", background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <div>
+            <h3 style={{ margin:0, fontSize:18, fontWeight:800, color:C.textPrimary }}>{lead.name}</h3>
+            <div style={{ fontSize:12, color:C.textSecondary, marginTop:4 }}>{lead.company || lead.industry || "No company"}</div>
+          </div>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:20, cursor:"pointer" }}>✕</button>
+        </div>
+
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:20, padding:"16px", background:C.surface, borderRadius:10 }}>
+          <div>
+            <div style={{ fontSize:10, color:C.textMuted, textTransform:"uppercase", marginBottom:4 }}>Deal Value</div>
+            <div style={{ fontSize:16, fontWeight:800, color:C.textPrimary }}>${Number(lead.value||0).toLocaleString()}</div>
+          </div>
+          <div>
+            <div style={{ fontSize:10, color:C.textMuted, textTransform:"uppercase", marginBottom:4 }}>Lead Score</div>
+            <div style={{ fontSize:16, fontWeight:800, color:lead.score>=80?C.green:lead.score>=55?C.amber:C.red }}>{lead.score}</div>
+          </div>
+          <div>
+            <div style={{ fontSize:10, color:C.textMuted, textTransform:"uppercase", marginBottom:4 }}>Stage</div>
+            <select defaultValue={lead.stage} onChange={e=>setUpdates(p=>({...p,stage:e.target.value}))}
+              style={{ width:"100%", padding:"8px 10px", borderRadius:6, background:C.card, border:`1px solid ${C.border}`, color:STAGE_COLORS[lead.stage], fontSize:12, fontWeight:700, cursor:"pointer" }}>
+              {["cold","contacted","qualified","negotiating","won","lost"].map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <div style={{ fontSize:10, color:C.textMuted, textTransform:"uppercase", marginBottom:4 }}>Agent</div>
+            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", background:C.card, borderRadius:6, border:`1px solid ${C.border}` }}>
+              <AgentAvatar agentId={agent?.id} size={18} />
+              <span style={{ fontSize:12, fontWeight:700, color:agent?.color }}>{agent?.name.toUpperCase()}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary, marginBottom:12 }}>📞 Communication History</div>
+          {leadComms.length === 0 ? (
+            <div style={{ padding:"16px", background:C.surface, borderRadius:8, color:C.textMuted, fontSize:12, textAlign:"center" }}>No communications yet</div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {leadComms.map(comm => (
+                <div key={comm.id} style={{ padding:"10px", background:C.surface, borderRadius:8, borderLeft:`3px solid ${comm.status==='completed'?C.green:comm.status==='failed'?C.red:C.amber}` }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"start", marginBottom:4 }}>
+                    <span style={{ fontSize:11, fontWeight:700, color:C.textPrimary }}>{comm.channel.toUpperCase()}</span>
+                    <span style={{ fontSize:10, color:C.textMuted }}>{new Date(comm.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <div style={{ fontSize:11, color:C.textSecondary, marginBottom:4 }}>{comm.message?.substring(0,80)}{"..."}</div>
+                  <div style={{ fontSize:9, color:C.textMuted }}>Status: <span style={{ fontWeight:700, color:comm.status==='completed'?C.green:C.amber }}>{comm.status}</span></div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+          <button onClick={onClose} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>Close</button>
+          <button onClick={handleSave} disabled={saving} style={{ padding:"9px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>
+            {saving?"Saving…":"Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Pipeline({ setSelectedLead, setActiveTab }) {
   const [contacts, setContacts] = useState([]);
   const [communications, setCommunications] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [showAdd, setShowAdd]   = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [selectedLead, setSelected] = useState(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -83,6 +165,23 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
     setContacts(p => p.map(c => c.id===id ? {...c, stage} : c));
   };
 
+  const handleUpdate = async (id, updates) => {
+    await updateContact(id, updates);
+    setContacts(p => p.map(c => c.id===id ? {...c,...updates} : c));
+  };
+
+  const filtered = contacts.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.company?.toLowerCase().includes(search.toLowerCase()) ||
+    c.industry?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const stats = {
+    total: filtered.length,
+    value: filtered.reduce((s,l) => s + Number(l.value||0), 0),
+    high_priority: filtered.filter(l => l.score >= 80).length,
+  };
+
   return (
     <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%" }}>
       <SectionHeader
@@ -90,12 +189,33 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
         sub="Cold → Contacted → Qualified → Negotiating → Won / Lost"
         action={<button onClick={()=>setShowAdd(true)} style={{ padding:"8px 16px", borderRadius:8, border:`1px solid ${C.primary}`, background:`${C.primary}15`, color:C.primary, fontSize:13, fontWeight:700, cursor:"pointer" }}>+ Add Lead</button>}
       />
+
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:12, marginBottom:24 }}>
+        <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:16 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:6 }}>Total Leads</div>
+          <div style={{ fontSize:20, fontWeight:800, color:C.textPrimary }}>{stats.total}</div>
+        </div>
+        <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:16 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:6 }}>Pipeline Value</div>
+          <div style={{ fontSize:20, fontWeight:800, color:C.green }}>${stats.value.toLocaleString()}</div>
+        </div>
+        <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:16 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:6 }}>High Priority</div>
+          <div style={{ fontSize:20, fontWeight:800, color:C.amber }}>{stats.high_priority}</div>
+        </div>
+      </div>
+
+      <div style={{ marginBottom:20 }}>
+        <input type="text" placeholder="Search leads by name, company, or industry…" value={search} onChange={e=>setSearch(e.target.value)}
+          style={{ width:"100%", padding:"10px 14px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+      </div>
+
       {loading ? (
         <div style={{ textAlign:"center", color:C.textMuted, fontSize:13, paddingTop:60 }}>Loading…</div>
       ) : (
         <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:12 }}>
           {PIPELINE_STAGES.map(stage => {
-            const stageLeads = contacts.filter(l => l.stage === stage.id);
+            const stageLeads = filtered.filter(l => l.stage === stage.id);
             const val = stageLeads.reduce((s,l) => s + Number(l.value||0), 0);
             return (
               <div key={stage.id} style={{ display:"flex", flexDirection:"column", gap:8, background:C.surface, borderRadius:12, padding:12, border:`1px solid ${C.border}`, minHeight:400 }}>
@@ -108,10 +228,12 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
                   const a = AGENTS.find(ag => ag.id === lead.assigned_to);
                   const leadComms = communications.filter(c => c.contact_id === lead.id);
                   const calls = leadComms.filter(c => c.channel === "call").length;
-                  const texts = leadComms.filter(c => c.channel === "text").length;
+                  const texts = leadComms.filter(c => c.channel === "sms").length;
                   const emails = leadComms.filter(c => c.channel === "email").length;
                   return (
-                    <div key={lead.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 11px", borderLeft:`3px solid ${a?.color||C.border}` }}>
+                    <div key={lead.id} onClick={()=>setSelected(lead)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 11px", borderLeft:`3px solid ${a?.color||C.border}`, cursor:"pointer" }}
+                      onMouseEnter={e=>e.currentTarget.style.background=C.surface}
+                      onMouseLeave={e=>e.currentTarget.style.background=C.card}>
                       <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary, marginBottom:2 }}>{lead.name}</div>
                       <div style={{ fontSize:10, color:C.textSecondary, marginBottom:8 }}>{lead.industry||lead.company||"—"}</div>
                       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
@@ -125,7 +247,7 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
                           {emails > 0 && <span>📧{emails}</span>}
                         </div>
                       )}
-                      <select value={lead.stage} onChange={e=>moveStage(lead.id, e.target.value)}
+                      <select value={lead.stage} onClick={e=>e.stopPropagation()} onChange={e=>{e.stopPropagation();moveStage(lead.id, e.target.value);}}
                         style={{ width:"100%", padding:"4px 6px", borderRadius:5, border:`1px solid ${STAGE_COLORS[lead.stage]||C.border}`, background:C.surface, color:STAGE_COLORS[lead.stage]||C.textSecondary, fontSize:10, fontWeight:700, cursor:"pointer" }}>
                         {["cold","contacted","qualified","negotiating","won","lost"].map(s=><option key={s} value={s}>{s}</option>)}
                       </select>
@@ -141,6 +263,7 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
         </div>
       )}
       {showAdd && <AddLeadModal onClose={()=>setShowAdd(false)} onSave={handleAdd} />}
+      {selectedLead && <LeadDetailModal lead={selectedLead} communications={communications} onClose={()=>setSelected(null)} onUpdate={handleUpdate} />}
     </div>
   );
 }
