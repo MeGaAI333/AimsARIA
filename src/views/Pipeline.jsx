@@ -5,6 +5,45 @@ import { getContacts, addContact, updateContact, getAllCommunications, logCommun
 
 const STAGE_COLORS = { cold:C.textSecondary, contacted:"#00B4FF", qualified:C.primary, negotiating:C.amber, won:C.green, lost:C.red };
 
+function exportToCSV(leads, communications, notes) {
+  const headers = ["Name", "Company", "Industry", "Deal Value", "Score", "Stage", "Agent", "Last Contact", "Communications Count", "Notes Count"];
+
+  const rows = leads.map(lead => {
+    const commsCount = communications.filter(c => c.contact_id === lead.id).length;
+    const notesCount = notes.filter(n => n.contact_id === lead.id).length;
+    const agent = AGENTS.find(a => a.id === lead.assigned_to)?.name || "—";
+    const lastContact = lead.last_contact ? new Date(lead.last_contact).toLocaleDateString() : "Never";
+
+    return [
+      lead.name,
+      lead.company || "—",
+      lead.industry || "—",
+      Number(lead.value || 0),
+      lead.score,
+      lead.stage,
+      agent,
+      lastContact,
+      commsCount,
+      notesCount,
+    ];
+  });
+
+  const csvContent = [
+    headers.join(","),
+    ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")),
+  ].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv" });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `leads-export-${new Date().toISOString().split("T")[0]}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+}
+
 function BulkEmailModal({ selectedLeads, contacts, onClose, onSend }) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -872,6 +911,9 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
         </button>
         <button onClick={() => { setBulkMode(!bulkMode); setSelectedLeads(new Set()); }} style={{ padding:"10px 16px", borderRadius:8, border:`1px solid ${bulkMode?C.primary:C.border}`, background:bulkMode?`${C.primary}15`:"transparent", color:bulkMode?C.primary:C.textSecondary, fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}>
           {bulkMode ? "✕ Bulk Off" : "✓ Bulk Mode"}
+        </button>
+        <button onClick={() => exportToCSV(filtered, communications, notes)} style={{ padding:"10px 16px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}>
+          📥 Export CSV
         </button>
       </div>
 
