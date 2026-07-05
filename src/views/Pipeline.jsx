@@ -1,9 +1,136 @@
 import { useState, useEffect } from "react";
 import { C, AGENTS, PIPELINE_STAGES } from "../data.js";
 import { AgentAvatar, SectionHeader } from "../components/utils.jsx";
-import { getContacts, addContact, updateContact, getAllCommunications } from "../lib/db.js";
+import { getContacts, addContact, updateContact, getAllCommunications, logCommunication } from "../lib/db.js";
 
 const STAGE_COLORS = { cold:C.textSecondary, contacted:"#00B4FF", qualified:C.primary, negotiating:C.amber, won:C.green, lost:C.red };
+
+function EmailComposeModal({ lead, onClose, onSend }) {
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    if (!subject.trim() || !body.trim() || !lead.email?.trim()) {
+      alert("Please fill in subject and body, and ensure lead has an email");
+      return;
+    }
+    setSending(true);
+    try {
+      await onSend({
+        contact_id: lead.id,
+        channel: "email",
+        message: body,
+        subject,
+        to: lead.email,
+      });
+      onClose();
+    } catch (err) {
+      console.error("Failed to send email:", err);
+      alert("Failed to send email. Please try again.");
+      setSending(false);
+    }
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1001 }}>
+      <div style={{ width:600, maxHeight:"90vh", overflow:"auto", background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Send Email</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+
+        <div style={{ marginBottom:16, padding:"12px", background:C.surface, borderRadius:8 }}>
+          <div style={{ fontSize:10, color:C.textMuted, textTransform:"uppercase", marginBottom:4 }}>To</div>
+          <div style={{ fontSize:12, fontWeight:600, color:lead.email?C.textPrimary:C.red }}>
+            {lead.email || "⚠️ No email address"}
+          </div>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:16, marginBottom:20 }}>
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Subject</label>
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Email subject…"
+              style={{
+                width:"100%",
+                boxSizing:"border-box",
+                padding:"9px 12px",
+                borderRadius:8,
+                background:C.surface,
+                border:`1px solid ${C.border}`,
+                color:C.textPrimary,
+                fontSize:13,
+                outline:"none",
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Message</label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Compose your email…"
+              style={{
+                width:"100%",
+                boxSizing:"border-box",
+                padding:"10px 12px",
+                borderRadius:8,
+                background:C.surface,
+                border:`1px solid ${C.border}`,
+                color:C.textPrimary,
+                fontSize:13,
+                outline:"none",
+                fontFamily:"inherit",
+                minHeight:200,
+                resize:"vertical",
+              }}
+            />
+            <div style={{ fontSize:10, color:C.textMuted, marginTop:4 }}>{body.length} characters</div>
+          </div>
+        </div>
+
+        <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding:"9px 20px",
+              borderRadius:8,
+              border:`1px solid ${C.border}`,
+              background:"transparent",
+              color:C.textSecondary,
+              fontSize:13,
+              cursor:"pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={sending || !subject.trim() || !body.trim() || !lead.email?.trim()}
+            style={{
+              padding:"9px 20px",
+              borderRadius:8,
+              border:"none",
+              background:C.primary,
+              color:"#fff",
+              fontSize:13,
+              fontWeight:700,
+              cursor:"pointer",
+              opacity:sending || !subject.trim() || !body.trim() || !lead.email?.trim()?0.6:1,
+            }}
+          >
+            {sending?"Sending…":"Send Email"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AddLeadModal({ onClose, onSave }) {
   const [form, setForm] = useState({ name:"", company:"", industry:"", value:"", stage:"cold", assigned_to:"aria", score:50 });
@@ -228,9 +355,10 @@ function ActivityTimeline({ lead, communications }) {
   );
 }
 
-function LeadDetailModal({ lead, communications, onClose, onUpdate }) {
+function LeadDetailModal({ lead, communications, onClose, onUpdate, onCommunicationSent }) {
   const [updates, setUpdates] = useState({});
   const [saving, setSaving] = useState(false);
+  const [showEmailCompose, setShowEmailCompose] = useState(false);
   const agent = AGENTS.find(a => a.id === lead.assigned_to);
 
   const handleSave = async () => {
@@ -238,6 +366,22 @@ function LeadDetailModal({ lead, communications, onClose, onUpdate }) {
     await onUpdate(lead.id, updates);
     setSaving(false);
     onClose();
+  };
+
+  const handleSendEmail = async (emailData) => {
+    try {
+      await logCommunication({
+        contact_id: emailData.contact_id,
+        channel: "email",
+        message: emailData.message,
+        status: "completed",
+        metadata: JSON.stringify({ subject: emailData.subject, to: emailData.to }),
+      });
+      if (onCommunicationSent) onCommunicationSent();
+    } catch (err) {
+      console.error("Failed to send email:", err);
+      throw err;
+    }
   };
 
   return (
@@ -279,11 +423,13 @@ function LeadDetailModal({ lead, communications, onClose, onUpdate }) {
         <ActivityTimeline lead={lead} communications={communications} />
 
         <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+          <button onClick={() => setShowEmailCompose(true)} style={{ padding:"9px 16px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>✉️ Email</button>
           <button onClick={onClose} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>Close</button>
           <button onClick={handleSave} disabled={saving} style={{ padding:"9px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", opacity:saving?0.6:1 }}>
             {saving?"Saving…":"Save Changes"}
           </button>
         </div>
+        {showEmailCompose && <EmailComposeModal lead={lead} onClose={() => setShowEmailCompose(false)} onSend={handleSendEmail} />}
       </div>
     </div>
   );
@@ -333,6 +479,11 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
   const handleUpdate = async (id, updates) => {
     await updateContact(id, updates);
     setContacts(p => p.map(c => c.id===id ? {...c,...updates} : c));
+  };
+
+  const handleCommunicationSent = async () => {
+    const updatedComms = await getAllCommunications().catch(() => []);
+    setCommunications(updatedComms || []);
   };
 
   const toggleLeadSelection = (leadId) => {
@@ -532,7 +683,7 @@ export default function Pipeline({ setSelectedLead, setActiveTab }) {
         </div>
       )}
       {showAdd && <AddLeadModal onClose={()=>setShowAdd(false)} onSave={handleAdd} />}
-      {selectedLead && <LeadDetailModal lead={selectedLead} communications={communications} onClose={()=>setSelected(null)} onUpdate={handleUpdate} />}
+      {selectedLead && <LeadDetailModal lead={selectedLead} communications={communications} onClose={()=>setSelected(null)} onUpdate={handleUpdate} onCommunicationSent={handleCommunicationSent} />}
       {showFilters && <FilterPanel filters={filters} setFilters={setFilters} onClose={()=>setShowFilters(false)} />}
     </div>
   );
