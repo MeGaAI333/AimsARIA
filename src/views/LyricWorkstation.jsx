@@ -292,6 +292,89 @@ function ApprovalModal({ post, onClose, onApprove, onReject }) {
   );
 }
 
+function PostDetailModal({ post, onClose }) {
+  if (!post) return null;
+
+  const postDate = new Date(post.scheduled_at);
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ width:700, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28, maxHeight:"90vh", overflowY:"auto" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Post Details</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Platform</div>
+              <div style={{ fontSize:13, color:C.textPrimary }}>{post.platform}</div>
+            </div>
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Content Type</div>
+              <div style={{ fontSize:13, color:C.textPrimary }}>{post.content_type}</div>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Topic</div>
+            <div style={{ fontSize:13, color:C.textPrimary, fontWeight:600 }}>{post.topic}</div>
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Scheduled For</div>
+              <div style={{ fontSize:13, color:C.textPrimary }}>{postDate.toLocaleDateString()}</div>
+            </div>
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Time</div>
+              <div style={{ fontSize:13, color:C.textPrimary }}>{postDate.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}</div>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Status</div>
+            <div style={{ display:"inline-block", padding:"4px 10px", borderRadius:4, fontSize:11, fontWeight:700,
+              background:post.status === "draft" ? `${C.amber}15` : post.status === "pending_approval" ? `${C.primary}15` : post.status === "published" ? `${C.green}15` : `${C.red}15`,
+              color:post.status === "draft" ? C.amber : post.status === "pending_approval" ? C.primary : post.status === "published" ? C.green : C.red
+            }}>{post.status}</div>
+          </div>
+
+          <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:14 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Content</div>
+            <div style={{ fontSize:12, color:C.textSecondary, lineHeight:1.6, whiteSpace:"pre-wrap", maxHeight:250, overflowY:"auto" }}>
+              {post.copy}
+            </div>
+          </div>
+
+          {post.images && post.images.length > 0 && (
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", marginBottom:8 }}>Images ({post.images.length})</div>
+              <div style={{ display:"flex", gap:8, overflowX:"auto" }}>
+                {post.images.map((img, i) => (
+                  <img key={i} src={img} alt="preview" style={{ maxWidth:150, maxHeight:150, borderRadius:8, objectFit:"cover" }} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {post.error_message && (
+            <div style={{ background:`${C.red}15`, border:`1px solid ${C.red}`, borderRadius:8, padding:12 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:C.red, textTransform:"uppercase", marginBottom:4 }}>Error</div>
+              <div style={{ fontSize:12, color:C.red, whiteSpace:"pre-wrap" }}>{post.error_message}</div>
+            </div>
+          )}
+
+          <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:8 }}>
+            <button onClick={onClose} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SchedulePostModal({ contentType, platform, topic, generated, onClose, onPublish, onSchedule }) {
   const [mode, setMode] = useState(null); // null | "now" | "later"
   const [scheduleDate, setScheduleDate] = useState("");
@@ -965,7 +1048,7 @@ export default function LyricWorkstation({ orgId }) {
         {tab === "schedule" && (
           <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%" }}>
             <h3 style={{ margin:"0 0 20px", fontSize:16, fontWeight:700, color:C.textPrimary }}>Scheduled Posts</h3>
-            {scheduledPosts.length === 0 ? (
+            {calendarPosts.filter(p => ["pending_approval", "scheduled"].includes(p.status)).length === 0 ? (
               <div style={{ textAlign:"center", paddingTop:60, color:C.textMuted }}>
                 <div style={{ fontSize:48, marginBottom:16 }}>📅</div>
                 <h4 style={{ margin:"0 0 8px", fontSize:16, fontWeight:700, color:C.textSecondary }}>No Scheduled Content Yet</h4>
@@ -973,26 +1056,21 @@ export default function LyricWorkstation({ orgId }) {
               </div>
             ) : (
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                {scheduledPosts.map((post, i) => {
-                  const isPublished = post.status === "published";
-                  const isScheduled = post.status === "scheduled";
+                {calendarPosts.filter(p => ["pending_approval", "scheduled"].includes(p.status)).map(post => {
                   const schedDate = new Date(post.scheduled_at);
-                  const dateStr = isPublished ? "Published" : schedDate.toLocaleDateString();
-                  const timeStr = schedDate.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
+                  const statusColor = post.status === "pending_approval" ? C.amber : C.primary;
                   return (
-                    <div key={post.id} style={{ display:"flex", gap:14, alignItems:"center", padding:"14px 16px", background:C.card, border:`1px solid ${C.border}`, borderRadius:8, borderLeft:`4px solid ${isPublished?C.green:GREEN}` }}>
-                      <div style={{ fontSize:24 }}>{platIcon[post.platform]}</div>
+                    <div key={post.id} style={{ display:"flex", gap:14, alignItems:"center", padding:"14px 16px", background:C.card, border:`1px solid ${C.border}`, borderRadius:8, borderLeft:`4px solid ${statusColor}`, cursor:"pointer" }} onClick={() => { setSelectedPostDetail(post); setShowPostDetail(true); }}>
+                      <div style={{ fontSize:24 }}>{platIcon[post.platform] || "📱"}</div>
                       <div style={{ flex:1 }}>
                         <div style={{ fontSize:13, fontWeight:700, color:C.textPrimary }}>{post.topic.slice(0, 50)}{post.topic.length > 50 ? "…" : ""}</div>
                         <div style={{ fontSize:12, color:C.textSecondary, marginTop:2 }}>
-                          {typeIcon[post.content_type]} {post.content_type} · {dateStr}{isScheduled && ` · ${timeStr}`}
+                          {typeIcon[post.content_type]} {post.content_type} · {schedDate.toLocaleDateString()} @ {schedDate.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}
                         </div>
                       </div>
-                      <div style={{ display:"flex", gap:6 }}>
-                        <span style={{ fontSize:11, padding:"4px 10px", borderRadius:4, background:isPublished?`${C.green}15`:`${C.amber}15`, color:isPublished?C.green:C.amber, fontWeight:700 }}>
-                          {isPublished ? "✓ Published" : "Scheduled"}
-                        </span>
-                      </div>
+                      <span style={{ fontSize:11, padding:"4px 10px", borderRadius:4, background:`${statusColor}15`, color:statusColor, fontWeight:700 }}>
+                        {post.status === "pending_approval" ? "⏳ Pending" : "📅 Scheduled"}
+                      </span>
                     </div>
                   );
                 })}
@@ -1002,12 +1080,35 @@ export default function LyricWorkstation({ orgId }) {
         )}
 
         {tab === "published" && (
-          <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
-            <div style={{ fontSize:48, marginBottom:16 }}>📡</div>
-            <h3 style={{ margin:"0 0 10px", fontSize:18, fontWeight:700, color:C.textPrimary }}>No Published Content Yet</h3>
-            <p style={{ color:C.textSecondary, fontSize:13, textAlign:"center", maxWidth:380, lineHeight:1.6, margin:0 }}>
-              Content you generate and schedule will appear here once published. Use the Create tab to get started.
-            </p>
+          <div style={{ padding:"28px 32px", overflowY:"auto", height:"100%" }}>
+            <h3 style={{ margin:"0 0 20px", fontSize:16, fontWeight:700, color:C.textPrimary }}>Published Posts</h3>
+            {calendarPosts.filter(p => p.status === "published").length === 0 ? (
+              <div style={{ textAlign:"center", paddingTop:60, color:C.textMuted }}>
+                <div style={{ fontSize:48, marginBottom:16 }}>📡</div>
+                <h4 style={{ margin:"0 0 8px", fontSize:16, fontWeight:700, color:C.textSecondary }}>No Published Content Yet</h4>
+                <p style={{ margin:0, fontSize:13, maxWidth:340, lineHeight:1.6 }}>Content you generate and schedule will appear here once published. Use the Create tab to get started.</p>
+              </div>
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {calendarPosts.filter(p => p.status === "published").map(post => {
+                  const postDate = new Date(post.scheduled_at);
+                  return (
+                    <div key={post.id} style={{ display:"flex", gap:14, alignItems:"center", padding:"14px 16px", background:C.card, border:`1px solid ${C.border}`, borderRadius:8, borderLeft:`4px solid ${C.green}`, cursor:"pointer" }} onClick={() => { setSelectedPostDetail(post); setShowPostDetail(true); }}>
+                      <div style={{ fontSize:24 }}>{platIcon[post.platform] || "📱"}</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:13, fontWeight:700, color:C.textPrimary }}>{post.topic.slice(0, 50)}{post.topic.length > 50 ? "…" : ""}</div>
+                        <div style={{ fontSize:12, color:C.textSecondary, marginTop:2 }}>
+                          {typeIcon[post.content_type]} {post.content_type} · Published {postDate.toLocaleDateString()}
+                        </div>
+                      </div>
+                      <span style={{ fontSize:11, padding:"4px 10px", borderRadius:4, background:`${C.green}15`, color:C.green, fontWeight:700 }}>
+                        ✓ Published
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -1063,6 +1164,22 @@ export default function LyricWorkstation({ orgId }) {
             onClose={() => setShowScheduleModal(false)}
             onPublish={handlePublishNow}
             onSchedule={handleSchedulePost}
+          />
+        )}
+
+        {showApprovalModal && selectedPostForApproval && (
+          <ApprovalModal
+            post={selectedPostForApproval}
+            onClose={() => { setShowApprovalModal(false); setSelectedPostForApproval(null); }}
+            onApprove={handleApprovePost}
+            onReject={handleRejectPost}
+          />
+        )}
+
+        {showPostDetail && selectedPostDetail && (
+          <PostDetailModal
+            post={selectedPostDetail}
+            onClose={() => { setShowPostDetail(false); setSelectedPostDetail(null); }}
           />
         )}
       </div>
