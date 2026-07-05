@@ -221,6 +221,135 @@ function VoicePicker({ orgId, agentId, currentColors }) {
   );
 }
 
+function BufferSettings({ orgId, currentColors }) {
+  const [token, setToken] = useState("");
+  const [showToken, setShowToken] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState(null); // null | "success" | "error"
+  const [errMsg, setErrMsg] = useState("");
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    if (orgId) loadSettings();
+  }, [orgId]);
+
+  const loadSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("org_settings")
+        .select("buffer_api_token, buffer_connected_at")
+        .eq("org_id", orgId)
+        .single();
+      if (!error && data?.buffer_api_token) {
+        setConnected(true);
+        setToken("••••••••" + data.buffer_api_token.slice(-4));
+      }
+    } catch (e) {
+      console.error("Failed to load Buffer settings:", e);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!token.trim()) return;
+    setSaving(true);
+    setStatus(null);
+    setErrMsg("");
+    try {
+      const { error } = await supabase
+        .from("org_settings")
+        .upsert(
+          { org_id: orgId, buffer_api_token: token.trim(), buffer_connected_at: new Date().toISOString() },
+          { onConflict: "org_id" }
+        );
+      if (error) throw error;
+      setStatus("success");
+      setConnected(true);
+      setTimeout(() => setStatus(null), 2000);
+    } catch (e) {
+      setErrMsg(e.message || "Failed to save token.");
+      setStatus("error");
+    }
+    setSaving(false);
+  };
+
+  const handleDisconnect = async () => {
+    if (!window.confirm("Disconnect Buffer? LYRIC will no longer be able to post to social media.")) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("org_settings")
+        .update({ buffer_api_token: null, buffer_connected_at: null })
+        .eq("org_id", orgId);
+      if (error) throw error;
+      setConnected(false);
+      setToken("");
+      setStatus("success");
+      setTimeout(() => setStatus(null), 2000);
+    } catch (e) {
+      setErrMsg(e.message || "Failed to disconnect.");
+      setStatus("error");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ background:currentColors.card, border:`1px solid ${currentColors.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+        <div>
+          <h3 style={{ margin:"0 0 6px", fontSize:14, fontWeight:700, color:currentColors.textPrimary }}>Buffer Integration</h3>
+          <p style={{ margin:0, fontSize:12, color:currentColors.textSecondary }}>Connect your Buffer account to auto-post LYRIC content to all social platforms.</p>
+        </div>
+        {connected && (
+          <div style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:20, background:`${C.green}15`, border:`1px solid ${C.green}30` }}>
+            <span style={{ fontSize:12, fontWeight:700, color:C.green }}>● Connected</span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginBottom:16 }}>
+        <label style={{ display:"block", fontSize:11, fontWeight:700, color:currentColors.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>
+          Buffer API Token {!connected && "*"}
+        </label>
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <input type={showToken ? "text" : "password"} value={token} onChange={e => setToken(e.target.value)} placeholder="Enter your Buffer API token"
+            disabled={connected && saving}
+            style={{ flex:1, padding:"10px 14px", borderRadius:8, background:currentColors.surface, border:`1px solid ${currentColors.border}`, color:currentColors.textPrimary, fontSize:13, outline:"none", opacity:connected && !saving ? 0.6 : 1 }} />
+          <button onClick={() => setShowToken(!showToken)} style={{ padding:"8px 12px", borderRadius:6, border:`1px solid ${currentColors.border}`, background:"transparent", color:currentColors.textSecondary, fontSize:11, fontWeight:700, cursor:"pointer" }}>
+            {showToken ? "Hide" : "Show"}
+          </button>
+        </div>
+        <p style={{ margin:"6px 0 0", fontSize:11, color:currentColors.textMuted }}>
+          Get your token from <a href="https://buffer.com/developers/api" target="_blank" rel="noreferrer" style={{ color:C.primary, textDecoration:"none", fontWeight:600 }}>Buffer Developer Settings →</a>
+        </p>
+      </div>
+
+      {status === "success" && (
+        <div style={{ padding:"12px 16px", borderRadius:8, background:`${C.green}15`, border:`1px solid ${C.green}40`, color:C.green, fontSize:13, fontWeight:600, marginBottom:14 }}>
+          ✓ {connected ? "Buffer connected successfully!" : "Buffer disconnected."}
+        </div>
+      )}
+      {status === "error" && (
+        <div style={{ padding:"12px 16px", borderRadius:8, background:`${C.red}15`, border:`1px solid ${C.red}40`, color:C.red, fontSize:13, marginBottom:14 }}>
+          ⚠️ {errMsg}
+        </div>
+      )}
+
+      <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+        {connected && (
+          <button onClick={handleDisconnect} disabled={saving}
+            style={{ padding:"9px 18px", borderRadius:8, border:`1px solid ${C.red}`, background:"transparent", color:C.red, fontSize:13, fontWeight:700, cursor:"pointer", opacity:saving ? 0.6 : 1 }}>
+            {saving ? "Disconnecting…" : "Disconnect"}
+          </button>
+        )}
+        <button onClick={handleSave} disabled={!token.trim() || saving || connected}
+          style={{ padding:"9px 18px", borderRadius:8, border:"none", background:!token.trim()||saving||connected ? currentColors.border : C.primary, color:!token.trim()||saving||connected ? currentColors.textMuted : "#fff", fontSize:13, fontWeight:700, cursor:!token.trim()||saving||connected ? "not-allowed" : "pointer" }}>
+          {saving ? "Saving…" : connected ? "Token Saved" : "Save Token"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Settings({ role, userEmail, orgId, theme, onThemeToggle, onSignOut }) {
   const currentColors = THEMES[theme];
 
@@ -277,6 +406,9 @@ export default function Settings({ role, userEmail, orgId, theme, onThemeToggle,
           </div>
         </div>
       </div>
+
+      {/* Buffer Integration — admin only */}
+      {role === "admin" && orgId && <BufferSettings orgId={orgId} currentColors={currentColors} />}
 
       {/* Agent Voices — admin only */}
       {role === "admin" && orgId && (
