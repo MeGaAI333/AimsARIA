@@ -334,3 +334,58 @@ export async function deleteScheduleRule(ruleId) {
   const { error } = await supabase.from("schedule_rules").delete().eq("id", ruleId);
   if (error) throw error;
 }
+
+// ── NOTIFICATIONS ──────────────────────────────────────────────────────────
+export async function getNotifications(orgId, limit = 50) {
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("org_id", orgId)
+    .order("sent_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function markNotificationRead(notificationId) {
+  const { error } = await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", notificationId);
+  if (error) throw error;
+}
+
+export async function getUnreadNotificationCount(orgId) {
+  const { count, error } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("org_id", orgId)
+    .is("read_at", null);
+  if (error) throw error;
+  return count || 0;
+}
+
+export async function getNotificationPreferences(orgId) {
+  const { data, error } = await supabase
+    .from("org_settings")
+    .select("notification_preferences")
+    .eq("org_id", orgId)
+    .single();
+  if (error && error.code !== "PGRST116") throw error;
+  return data?.notification_preferences || {};
+}
+
+export async function updateNotificationPreferences(orgId, preferences) {
+  const current = await getOrgSettings(orgId);
+  const { data, error } = await supabase
+    .from("org_settings")
+    .upsert({
+      org_id: orgId,
+      notification_preferences: preferences,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "org_id" })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
