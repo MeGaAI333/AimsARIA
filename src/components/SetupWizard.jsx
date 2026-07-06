@@ -8,8 +8,8 @@ const WIZARD_STEPS = [
     icon: "🔑",
     description: "Connect your Anthropic and Buffer API keys to unlock AI features and social media posting.",
     fields: [
-      { label: "Anthropic API Key", key: "anthropic_key", type: "password", placeholder: "sk-ant-...", help: "Get from console.anthropic.com" },
-      { label: "Buffer API Token", key: "buffer_token", type: "password", placeholder: "your-buffer-token", help: "Get from buffer.com/developers/api" },
+      { label: "Anthropic API Key", key: "anthropic_key", type: "password", placeholder: "sk-ant-...", help: "Get from", helpLink: { text: "console.anthropic.com", url: "https://console.anthropic.com" } },
+      { label: "Buffer API Token", key: "buffer_token", type: "password", placeholder: "your-buffer-token", help: "Get from", helpLink: { text: "buffer.com/developers/api", url: "https://buffer.com/developers/api" } },
     ],
   },
   {
@@ -230,6 +230,26 @@ export default function SetupWizard({ tasks, completed, onToggle, currentStep, s
               {field.help && (
                 <p style={{ fontSize: 12, color: C.textSecondary, marginTop: 6, margin: "6px 0 0 0" }}>
                   💡 {field.help}
+                  {field.helpLink && (
+                    <>
+                      {" "}
+                      <a
+                        href={field.helpLink.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: C.primary,
+                          textDecoration: "underline",
+                          cursor: "pointer",
+                          fontWeight: 600,
+                        }}
+                        onMouseEnter={e => e.target.style.opacity = "0.8"}
+                        onMouseLeave={e => e.target.style.opacity = "1"}
+                      >
+                        {field.helpLink.text} ↗
+                      </a>
+                    </>
+                  )}
                 </p>
               )}
             </div>
