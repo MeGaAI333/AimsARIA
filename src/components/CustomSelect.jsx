@@ -54,44 +54,50 @@ export default function CustomSelect({ value, onChange, options, placeholder = "
             right: 0,
             marginTop: 4,
             background: "#ffffff",
-            border: `1px solid ${C.border}`,
+            border: `2px solid #000000`,
             borderRadius: 7,
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-            zIndex: 1000,
-            maxHeight: 250,
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.5)",
+            zIndex: 9999,
+            maxHeight: 300,
             overflowY: "auto",
+            minWidth: "100%",
           }}
         >
-          {options.map((option) => (
-            <button
-              key={option}
-              onClick={() => {
-                onChange(option);
-                setIsOpen(false);
-              }}
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                border: "none",
-                background: value === option ? `${C.primary}20` : "transparent",
-                color: "#000000",
-                fontSize: 13,
-                textAlign: "left",
-                cursor: "pointer",
-                borderBottom: `1px solid ${C.border}`,
-                transition: "background 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = `${C.primary}40`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = value === option ? `${C.primary}20` : "transparent";
-              }}
-            >
-              {value === option && "✓ "}
-              {option}
-            </button>
-          ))}
+          {options && options.length > 0 ? (
+            options.map((option, idx) => (
+              <div
+                key={`${option}-${idx}`}
+                onClick={() => {
+                  onChange(option);
+                  setIsOpen(false);
+                }}
+                style={{
+                  width: "100%",
+                  padding: "12px 14px",
+                  background: value === option ? "#e0e0e0" : "#ffffff",
+                  color: "#000000",
+                  fontSize: 14,
+                  fontWeight: value === option ? 600 : 400,
+                  textAlign: "left",
+                  cursor: "pointer",
+                  borderBottom: `1px solid #e0e0e0`,
+                  transition: "all 0.15s",
+                  boxSizing: "border-box",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#f0f0f0";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = value === option ? "#e0e0e0" : "#ffffff";
+                }}
+              >
+                {value === option ? "✓ " : "  "}
+                {option}
+              </div>
+            ))
+          ) : (
+            <div style={{ padding: "12px 14px", color: "#666666" }}>No options</div>
+          )}
         </div>
       )}
     </div>
