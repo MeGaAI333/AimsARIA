@@ -155,11 +155,12 @@ export default function SetupWizard({ tasks, completed, onToggle, currentStep, s
                     background: C.input,
                     border: `1px solid ${C.border}`,
                     borderRadius: 7,
-                    color: C.textPrimary,
+                    color: "#FFFFFF",
                     fontSize: 13,
                     outline: "none",
                     boxSizing: "border-box",
                   }}
+                  placeholder={field.placeholder}
                 />
               ) : field.type === "textarea" ? (
                 <textarea
@@ -173,7 +174,7 @@ export default function SetupWizard({ tasks, completed, onToggle, currentStep, s
                     background: C.input,
                     border: `1px solid ${C.border}`,
                     borderRadius: 7,
-                    color: C.textPrimary,
+                    color: "#FFFFFF",
                     fontSize: 13,
                     outline: "none",
                     boxSizing: "border-box",
