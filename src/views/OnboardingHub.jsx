@@ -22,8 +22,6 @@ const TASKS = [
 export default function OnboardingHub({ setActiveTab }) {
   const [completed, setCompleted] = useState(new Set());
   const [currentStep, setCurrentStep] = useState(0);
-  const [showWizard, setShowWizard] = useState(false);
-  const [showTour, setShowTour] = useState(false);
   const [activeTab, setInternalActiveTab] = useState("checklist");
 
   useEffect(() => {
@@ -122,7 +120,7 @@ export default function OnboardingHub({ setActiveTab }) {
         <div style={{ display: "flex", gap: 12 }}>
           {progressPercent < 100 && (
             <button
-              onClick={() => setShowWizard(true)}
+              onClick={() => setInternalActiveTab("wizard")}
               style={{
                 padding: "10px 18px",
                 background: C.primary,
@@ -138,7 +136,7 @@ export default function OnboardingHub({ setActiveTab }) {
             </button>
           )}
           <button
-            onClick={() => setShowTour(true)}
+            onClick={() => setInternalActiveTab("tour")}
             style={{
               padding: "10px 18px",
               background: "transparent",
