@@ -85,7 +85,7 @@ export default function InteractiveTour({ setActiveTab }) {
       "Campaigns": "campaigns",
       "LYRIC Workstation": "lyric-workstation",
       "Calendar": "calendar",
-      "AI Agents": "agents",
+      "AI Agents": "agent-aria",
       "Settings": "settings",
     };
     if (tabMap[section]) {
