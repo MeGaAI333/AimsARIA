@@ -23,11 +23,15 @@ export default function OnboardingHub({ setActiveTab }) {
   const [completed, setCompleted] = useState(new Set());
   const [currentStep, setCurrentStep] = useState(0);
   const [activeTab, setInternalActiveTab] = useState("checklist");
+  const [role, setRole] = useState("user");
 
   useEffect(() => {
     async function loadProgress() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Get user role
+      setRole(user.user_metadata?.role || "user");
 
       const { data } = await supabase
         .from("onboarding_progress")
@@ -61,8 +65,14 @@ export default function OnboardingHub({ setActiveTab }) {
     }
   };
 
-  const progressPercent = Math.round((completed.size / TASKS.length) * 100);
-  const nextIncompleteIdx = TASKS.findIndex(t => !completed.has(t.id));
+  // Filter tasks based on role
+  const filteredTasks = TASKS.filter(t => {
+    if (t.id === "agent-setup" && role !== "admin") return false;
+    return true;
+  });
+
+  const progressPercent = Math.round((completed.size / filteredTasks.length) * 100);
+  const nextIncompleteIdx = filteredTasks.findIndex(t => !completed.has(t.id));
 
   return (
     <div style={{ padding: "28px 32px", overflowY: "auto", height: "100%" }}>
@@ -95,7 +105,7 @@ export default function OnboardingHub({ setActiveTab }) {
             {progressPercent}%
           </div>
           <div style={{ fontSize: 12, color: C.textSecondary }}>
-            {completed.size} of {TASKS.length} tasks completed
+            {completed.size} of {filteredTasks.length} tasks completed
           </div>
         </div>
 
@@ -183,11 +193,11 @@ export default function OnboardingHub({ setActiveTab }) {
 
       {/* Tab Content */}
       {activeTab === "checklist" && (
-        <OnboardingChecklist tasks={TASKS} completed={completed} onToggle={toggleTask} setActiveTab={setActiveTab} />
+        <OnboardingChecklist tasks={filteredTasks} completed={completed} onToggle={toggleTask} setActiveTab={setActiveTab} />
       )}
 
       {activeTab === "wizard" && (
-        <SetupWizard tasks={TASKS} completed={completed} onToggle={toggleTask} currentStep={currentStep} setCurrentStep={setCurrentStep} setActiveTab={setActiveTab} />
+        <SetupWizard tasks={filteredTasks} completed={completed} onToggle={toggleTask} currentStep={currentStep} setCurrentStep={setCurrentStep} setActiveTab={setActiveTab} role={role} />
       )}
 
       {activeTab === "guides" && (

@@ -59,13 +59,20 @@ const WIZARD_STEPS = [
   },
 ];
 
-export default function SetupWizard({ tasks, completed, onToggle, currentStep, setCurrentStep, setActiveTab }) {
+export default function SetupWizard({ tasks, completed, onToggle, currentStep, setCurrentStep, setActiveTab, role = "user" }) {
   const [stepData, setStepData] = useState({});
-  const step = WIZARD_STEPS[currentStep];
+
+  // Filter wizard steps based on role
+  const filteredSteps = WIZARD_STEPS.filter(s => {
+    if (s.id === "agent-setup" && role !== "admin") return false;
+    return true;
+  });
+
+  const step = filteredSteps[currentStep];
 
   const handleNext = async () => {
-    if (currentStep < WIZARD_STEPS.length - 1) {
-      onToggle(WIZARD_STEPS[currentStep].id);
+    if (currentStep < filteredSteps.length - 1) {
+      onToggle(filteredSteps[currentStep].id);
       setCurrentStep(currentStep + 1);
     }
   };
@@ -90,23 +97,24 @@ export default function SetupWizard({ tasks, completed, onToggle, currentStep, s
       {/* Progress Indicator */}
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-          {WIZARD_STEPS.map((s, idx) => (
+          {filteredSteps.map((s, idx) => (
             <div
               key={s.id}
               onClick={() => setCurrentStep(idx)}
               style={{
-                width: "8%",
+                width: `${100 / filteredSteps.length}%`,
                 height: 4,
                 background: idx <= currentStep ? C.primary : C.border,
                 borderRadius: 2,
                 cursor: "pointer",
                 transition: "background 0.2s",
+                marginRight: idx < filteredSteps.length - 1 ? 4 : 0,
               }}
             />
           ))}
         </div>
         <div style={{ fontSize: 12, color: C.textSecondary, textAlign: "right" }}>
-          Step {currentStep + 1} of {WIZARD_STEPS.length}
+          Step {currentStep + 1} of {filteredSteps.length}
         </div>
       </div>
 
@@ -282,7 +290,7 @@ export default function SetupWizard({ tasks, completed, onToggle, currentStep, s
         </button>
 
         <div style={{ display: "flex", gap: 12 }}>
-          {currentStep < WIZARD_STEPS.length - 1 && (
+          {currentStep < filteredSteps.length - 1 && (
             <button
               onClick={handleNext}
               style={{
@@ -299,7 +307,7 @@ export default function SetupWizard({ tasks, completed, onToggle, currentStep, s
               Next →
             </button>
           )}
-          {currentStep === WIZARD_STEPS.length - 1 && (
+          {currentStep === filteredSteps.length - 1 && (
             <button
               onClick={() => setCurrentStep(0)}
               style={{
