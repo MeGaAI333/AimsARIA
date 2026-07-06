@@ -83,7 +83,7 @@ export default function InteractiveTour({ setActiveTab }) {
       "Pipeline": "pipeline",
       "Conversations": "conversations",
       "Campaigns": "campaigns",
-      "LYRIC Workstation": "lyric",
+      "LYRIC Workstation": "lyric-workstation",
       "Calendar": "calendar",
       "AI Agents": "agents",
       "Settings": "settings",
