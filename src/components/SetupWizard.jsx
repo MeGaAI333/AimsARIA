@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { C } from "../data.js";
+import CustomSelect from "./CustomSelect.jsx";
 
 const WIZARD_STEPS = [
   {
@@ -181,27 +182,12 @@ export default function SetupWizard({ tasks, completed, onToggle, currentStep, s
                   }}
                 />
               ) : field.type === "select" ? (
-                <select
+                <CustomSelect
                   value={stepData[field.key] || ""}
-                  onChange={e => handleFieldChange(field.key, e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "11px 14px",
-                    background: C.input,
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 7,
-                    color: C.textPrimary,
-                    fontSize: 13,
-                    outline: "none",
-                    boxSizing: "border-box",
-                    colorScheme: "light",
-                  }}
-                >
-                  <option value="">Select an option...</option>
-                  {field.options.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
+                  onChange={val => handleFieldChange(field.key, val)}
+                  options={field.options}
+                  placeholder="Select an option..."
+                />
               ) : field.type === "checkbox" ? (
                 <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
                   <input
