@@ -190,15 +190,16 @@ export default function SetupWizard({ tasks, completed, onToggle, currentStep, s
                     background: C.input,
                     border: `1px solid ${C.border}`,
                     borderRadius: 7,
-                    color: "#000000",
+                    color: C.textPrimary,
                     fontSize: 13,
                     outline: "none",
                     boxSizing: "border-box",
+                    colorScheme: "light",
                   }}
                 >
-                  <option value="" style={{ color: "#000000" }}>Select an option...</option>
+                  <option value="">Select an option...</option>
                   {field.options.map(opt => (
-                    <option key={opt} value={opt} style={{ color: "#000000", background: "#ffffff" }}>{opt}</option>
+                    <option key={opt} value={opt}>{opt}</option>
                   ))}
                 </select>
               ) : field.type === "checkbox" ? (
