@@ -29,8 +29,9 @@ export default function CustomSelect({ value, onChange, options, placeholder = "
           background: C.input,
           border: `1px solid ${C.border}`,
           borderRadius: 7,
-          color: C.textPrimary,
+          color: "#FFFFFF",
           fontSize: 13,
+          fontWeight: value ? 600 : 400,
           outline: "none",
           boxSizing: "border-box",
           textAlign: "left",
@@ -40,8 +41,8 @@ export default function CustomSelect({ value, onChange, options, placeholder = "
           justifyContent: "space-between",
         }}
       >
-        <span>{selectedLabel}</span>
-        <span style={{ fontSize: 10 }}>{isOpen ? "▲" : "▼"}</span>
+        <span style={{ color: value ? "#FFFFFF" : "#999999" }}>{selectedLabel}</span>
+        <span style={{ fontSize: 10, color: "#FFFFFF" }}>{isOpen ? "▲" : "▼"}</span>
       </button>
 
       {/* Dropdown Menu */}
