@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { C } from "../data.js";
+import { supabase } from "../lib/supabase.js";
 import CustomSelect from "./CustomSelect.jsx";
 
 const WIZARD_STEPS = [
@@ -62,6 +63,25 @@ const WIZARD_STEPS = [
 export default function SetupWizard({ tasks, completed, onToggle, currentStep, setCurrentStep, setActiveTab, role = "user" }) {
   const [stepData, setStepData] = useState({});
 
+  // Load saved wizard data on mount
+  useEffect(() => {
+    const loadWizardData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("onboarding_wizard_data")
+        .select("form_data")
+        .eq("user_id", user.id)
+        .single();
+
+      if (data?.form_data) {
+        setStepData(data.form_data);
+      }
+    };
+    loadWizardData();
+  }, []);
+
   // Filter wizard steps based on role
   const filteredSteps = WIZARD_STEPS.filter(s => {
     if (s.id === "agent-setup" && role !== "admin") return false;
@@ -70,8 +90,20 @@ export default function SetupWizard({ tasks, completed, onToggle, currentStep, s
 
   const step = filteredSteps[currentStep];
 
+  const saveWizardData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase.from("onboarding_wizard_data").upsert({
+      user_id: user.id,
+      form_data: stepData,
+      updated_at: new Date(),
+    });
+  };
+
   const handleNext = async () => {
     if (currentStep < filteredSteps.length - 1) {
+      await saveWizardData();
       onToggle(filteredSteps[currentStep].id);
       setCurrentStep(currentStep + 1);
     }
