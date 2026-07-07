@@ -1,7 +1,7 @@
 // ── COLORS ───────────────────────────────────────────────────────────────────
 export const THEMES = {
   dark: {
-    bg: "#0F1625", sidebar: "#131B2E", surface: "#1A2847", card: "#202E4A",
+    bg: "#0F1625", sidebar: "#131B2E", surface: "#1A2847", card: "#202E4A", input: "#162240",
     border: "#2A3D5C", borderHover: "#3A4F7A",
     primary: "#4F7EFF", primaryDim: "#121D50",
     green: "#10B981", greenDim: "#082B1E",
@@ -10,7 +10,7 @@ export const THEMES = {
     textPrimary: "#FFFFFF", textSecondary: "#B8CCFF", textMuted: "#7A9FD9",
   },
   light: {
-    bg: "#F9FAFB", sidebar: "#F3F4F6", surface: "#EFEFEF", card: "#FFFFFF",
+    bg: "#F9FAFB", sidebar: "#F3F4F6", surface: "#EFEFEF", card: "#FFFFFF", input: "#FFFFFF",
     border: "#D1D5DB", borderHover: "#9CA3AF",
     primary: "#2563EB", primaryDim: "#EFF6FF",
     green: "#059669", greenDim: "#F0FDF4",

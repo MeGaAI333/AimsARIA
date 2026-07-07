@@ -158,7 +158,8 @@ export default function InteractiveTour({ setActiveTab }) {
                 key={idx}
                 style={{
                   padding: "10px 14px",
-                  background: "white",
+                  background: C.card,
+                  border: `1px solid ${C.border}`,
                   borderRadius: 6,
                   fontSize: 13,
                   fontWeight: 500,
