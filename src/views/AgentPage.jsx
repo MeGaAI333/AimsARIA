@@ -148,9 +148,69 @@ function LiveChat({ agent }) {
 export default function AgentPage({ agentId, setActiveTab, orgId, role }) {
   const agent = AGENTS.find(a => a.id === agentId);
   const stats = useOrgStats();
+  const [voices, setVoices] = useState([]);
+  const [selectedVoice, setSelectedVoice] = useState("june");
+  const [loadingVoices, setLoadingVoices] = useState(false);
+  const [savingVoice, setSavingVoice] = useState(false);
+
   if (!agent) return <div style={{ padding:40, color:C.textMuted }}>Agent not found.</div>;
 
   const kpis = agentKpis(agentId, stats);
+
+  // Load available voices and current selection
+  useEffect(() => {
+    const loadVoices = async () => {
+      setLoadingVoices(true);
+      try {
+        // Get available voices from Bland
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bland-voices`, {
+          headers: { "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` }
+        });
+        const data = await res.json();
+        if (data.voices) setVoices(data.voices);
+
+        // Get current agent voice setting
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const orgId = user.user_metadata?.org_id || user.id;
+          const { data: settings } = await supabase
+            .from("agent_settings")
+            .select("selected_voice")
+            .eq("org_id", orgId)
+            .eq("agent_id", agentId)
+            .single();
+
+          if (settings) setSelectedVoice(settings.selected_voice);
+        }
+      } catch (err) {
+        console.error("Error loading voices:", err);
+      } finally {
+        setLoadingVoices(false);
+      }
+    };
+    loadVoices();
+  }, [agentId]);
+
+  const handleVoiceChange = async (voiceId) => {
+    setSelectedVoice(voiceId);
+    setSavingVoice(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const orgId = user.user_metadata?.org_id || user.id;
+
+      await supabase.from("agent_settings").upsert({
+        org_id: orgId,
+        agent_id: agentId,
+        selected_voice: voiceId,
+      });
+    } catch (err) {
+      console.error("Error saving voice:", err);
+      alert("Failed to save voice selection");
+    } finally {
+      setSavingVoice(false);
+    }
+  };
 
   return (
     <div style={{ overflowY:"auto", height:"100%", padding:"28px 32px" }}>
@@ -182,6 +242,36 @@ export default function AgentPage({ agentId, setActiveTab, orgId, role }) {
         <div>
           <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:22, marginBottom:16 }}>
             <h3 style={{ margin:"0 0 16px", fontSize:14, fontWeight:700, color:C.textPrimary }}>Brand Voice</h3>
+
+            {/* Voice Selection */}
+            <div style={{ marginBottom:16 }}>
+              <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>Voice</label>
+              <select
+                value={selectedVoice}
+                onChange={e => handleVoiceChange(e.target.value)}
+                disabled={loadingVoices || savingVoice}
+                style={{
+                  width:"100%",
+                  padding:"10px 14px",
+                  borderRadius:8,
+                  background:C.surface,
+                  border:`1px solid ${C.border}`,
+                  color:C.textPrimary,
+                  fontSize:13,
+                  cursor:"pointer",
+                }}
+              >
+                {voices.length === 0 ? (
+                  <option>Loading voices...</option>
+                ) : (
+                  voices.map(v => (
+                    <option key={v.voice_id} value={v.voice_id}>{v.name}</option>
+                  ))
+                )}
+              </select>
+              {savingVoice && <div style={{ fontSize:11, color:C.textSecondary, marginTop:6 }}>Saving…</div>}
+            </div>
+
             <div style={{ padding:"10px 14px", borderRadius:8, background:`${agent.color}10`, border:`1px solid ${agent.color}25`, marginBottom:14 }}>
               <div style={{ fontSize:11, fontWeight:800, color:agent.color, textTransform:"uppercase", letterSpacing:0.5, marginBottom:4 }}>Tone</div>
               <div style={{ fontSize:13, color:C.textPrimary, fontWeight:600 }}>{agent.brandVoice.tone}</div>

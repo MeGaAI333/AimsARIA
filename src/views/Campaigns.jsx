@@ -203,6 +203,16 @@ export default function Campaigns() {
         return;
       }
 
+      // Get agent's selected voice
+      const { data: agentSettings } = await supabase
+        .from("agent_settings")
+        .select("selected_voice")
+        .eq("org_id", orgId)
+        .eq("agent_id", campaign.agent_id)
+        .single();
+
+      const voiceId = agentSettings?.selected_voice || "june";
+
       // Call send-outreach for each contact
       let successCount = 0;
       for (const contact of contacts) {
@@ -218,6 +228,7 @@ export default function Campaigns() {
             contact_email: contact.email,
             message: campaign.description || `Hi ${contact.name}, calling regarding ${campaign.name}`,
             agent_id: campaign.agent_id,
+            voice_id: voiceId,
             campaign_id: campaign.id,
           }),
         });
