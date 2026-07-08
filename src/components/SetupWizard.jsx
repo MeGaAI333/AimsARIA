@@ -3,6 +3,29 @@ import { C } from "../data.js";
 import { supabase } from "../lib/supabase.js";
 import CustomSelect from "./CustomSelect.jsx";
 
+const TONE_EXAMPLES = {
+  "Professional": {
+    male: "Good morning. I'd like to discuss how our solutions can improve your operations.",
+    female: "Hello. I'm reaching out to explore how we can help streamline your business processes.",
+  },
+  "Friendly & Warm": {
+    male: "Hey there! I'd love to chat about how we can make your life easier.",
+    female: "Hi! I'm so excited to learn more about your business and see how we can help.",
+  },
+  "Direct & Urgent": {
+    male: "We need to act fast. Time-sensitive opportunity for your business right now.",
+    female: "This can't wait. Let's connect today to secure this opportunity for you.",
+  },
+  "Educational": {
+    male: "Did you know that most businesses miss this critical step? Here's what you need to understand...",
+    female: "Let me share something valuable with you. Here's what successful companies are doing...",
+  },
+  "Casual": {
+    male: "What's up! So I was thinking about your business, and I've got a cool idea to share.",
+    female: "Hey! I was just thinking – we've got something awesome that might help you out.",
+  },
+};
+
 const WIZARD_STEPS = [
   {
     id: "api-keys",
@@ -30,7 +53,7 @@ const WIZARD_STEPS = [
     description: "Tell the AI agents how your brand should communicate. This ensures all generated content matches your style.",
     fields: [
       { label: "Brand Name", key: "brand_name", placeholder: "Your company name" },
-      { label: "Tone", key: "tone", type: "select", options: ["Professional", "Friendly & Warm", "Direct & Urgent", "Educational", "Casual"], help: "How should your brand sound?" },
+      { label: "Tone", key: "tone", type: "tone-picker", options: ["Professional", "Friendly & Warm", "Direct & Urgent", "Educational", "Casual"], help: "How should your brand sound?" },
       { label: "Key Phrases to Use", key: "phrases", type: "textarea", placeholder: "e.g., 'Let's revolutionize...'" },
       { label: "Phrases to Avoid", key: "avoid_phrases", type: "textarea", placeholder: "e.g., 'used', 'cheap'" },
     ],
@@ -239,6 +262,34 @@ export default function SetupWizard({ tasks, completed, onToggle, currentStep, s
                   />
                   <span style={{ fontSize: 13, color: C.textPrimary }}>Enable</span>
                 </label>
+              ) : field.type === "tone-picker" ? (
+                <div>
+                  <CustomSelect
+                    value={stepData[field.key] || ""}
+                    onChange={val => handleFieldChange(field.key, val)}
+                    options={field.options}
+                    placeholder="Select a tone..."
+                  />
+                  {stepData[field.key] && TONE_EXAMPLES[stepData[field.key]] && (
+                    <div style={{ marginTop: 16, padding: "14px", background: `${C.primary}08`, border: `1px solid ${C.border}`, borderRadius: 8 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Voice Examples</div>
+                      <div style={{ display: "grid", gap: 10 }}>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: C.textPrimary, marginBottom: 4 }}>♂️ Male</div>
+                          <div style={{ fontSize: 13, color: C.textSecondary, fontStyle: "italic", lineHeight: 1.5 }}>
+                            "{TONE_EXAMPLES[stepData[field.key]].male}"
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: C.textPrimary, marginBottom: 4 }}>♀️ Female</div>
+                          <div style={{ fontSize: 13, color: C.textSecondary, fontStyle: "italic", lineHeight: 1.5 }}>
+                            "{TONE_EXAMPLES[stepData[field.key]].female}"
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : field.type === "file" ? (
                 <input
                   type="file"
