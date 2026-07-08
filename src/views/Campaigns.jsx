@@ -172,6 +172,66 @@ export default function Campaigns() {
     setCampaigns(p => p.filter(c => c.id !== id));
   };
 
+  const handleLaunchCampaign = async (campaign) => {
+    if (!confirm(`Launch "${campaign.name}" campaign? This will start making outreach calls.`)) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      // Update campaign status to active
+      const { data: updated } = await supabase
+        .from("campaigns")
+        .update({ status: "active", launched_at: new Date().toISOString() })
+        .eq("id", campaign.id)
+        .select()
+        .single();
+
+      if (updated) {
+        setCampaigns(p => p.map(c => c.id === campaign.id ? updated : c));
+      }
+
+      // Get contacts for this campaign (or all org contacts if no specific filter)
+      const { data: contacts } = await supabase
+        .from("contacts")
+        .select("*")
+        .eq("org_id", orgId)
+        .limit(100);
+
+      if (!contacts || contacts.length === 0) {
+        alert("No contacts found to call. Please import contacts first.");
+        return;
+      }
+
+      // Call send-outreach for each contact
+      let successCount = 0;
+      for (const contact of contacts) {
+        if (!contact.phone) continue;
+
+        const res = await fetch("/.netlify/functions/send-outreach", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "call",
+            contact_phone: contact.phone,
+            contact_name: contact.name,
+            contact_email: contact.email,
+            message: campaign.description || `Hi ${contact.name}, calling regarding ${campaign.name}`,
+            agent_id: campaign.agent_id,
+            campaign_id: campaign.id,
+          }),
+        });
+
+        if (res.ok) successCount++;
+      }
+
+      alert(`Campaign launched! Started ${successCount} calls.`);
+    } catch (err) {
+      console.error("Error launching campaign:", err);
+      alert("Error launching campaign. Check console.");
+    }
+  };
+
   const getAgentColor = (agentId) => {
     const agent = AGENTS.find(a => a.id === agentId);
     return agent?.color || C.primary;
@@ -225,7 +285,26 @@ export default function Campaigns() {
                 {campaign.goal && <div style={{ fontSize:12, color:C.textSecondary, marginTop:8 }}>🎯 Goal: {campaign.goal}</div>}
               </div>
 
-              <button onClick={() => handleDelete(campaign.id)} style={{ background:"transparent", border:"none", color:C.textMuted, cursor:"pointer", fontSize:14, padding:"0 8px" }}>✕</button>
+              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                {campaign.status !== "active" && campaign.status !== "completed" && (
+                  <button
+                    onClick={() => handleLaunchCampaign(campaign)}
+                    style={{
+                      padding:"6px 12px",
+                      background:C.primary,
+                      color:"white",
+                      border:"none",
+                      borderRadius:6,
+                      fontSize:12,
+                      fontWeight:600,
+                      cursor:"pointer",
+                    }}
+                  >
+                    🚀 Launch
+                  </button>
+                )}
+                <button onClick={() => handleDelete(campaign.id)} style={{ background:"transparent", border:"none", color:C.textMuted, cursor:"pointer", fontSize:14, padding:"0 8px" }}>✕</button>
+              </div>
             </div>
           ))}
         </div>
