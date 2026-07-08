@@ -223,7 +223,6 @@ export default function SetupWizard({ tasks, completed, onToggle, currentStep, s
                     outline: "none",
                     boxSizing: "border-box",
                   }}
-                  placeholder={field.placeholder}
                 />
               ) : field.type === "textarea" ? (
                 <textarea
