@@ -166,12 +166,20 @@ function parseCSV(text) {
   const lines = text.split("\n").filter(l => l.trim());
   if (lines.length < 2) return [];
 
-  const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+  // Parse headers, handling spaces and normalizing to snake_case
+  const rawHeaders = lines[0].split(",").map(h => h.trim());
+  const headers = rawHeaders.map(h =>
+    h.toLowerCase()
+      .replace(/\s+/g, "_")  // convert spaces to underscores
+      .replace(/[^a-z0-9_]/g, "")  // remove special chars
+  );
+
   const rows = lines.slice(1).map(line => {
+    // Simple CSV parsing - split by comma (handles basic CSVs)
     const values = line.split(",").map(v => v.trim());
     const row = {};
     headers.forEach((h, i) => {
-      row[h] = values[i] || "";
+      if (h) row[h] = values[i] || "";
     });
     return row;
   });
