@@ -174,15 +174,35 @@ function parseCSV(text) {
       .replace(/[^a-z0-9_]/g, "")  // remove special chars
   );
 
-  const rows = lines.slice(1).map(line => {
-    // Simple CSV parsing - split by comma (handles basic CSVs)
-    const values = line.split(",").map(v => v.trim());
+  const rows = lines.slice(1).map((line, lineIdx) => {
+    // Split by comma but handle quoted fields
+    const values = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === "," && !inQuotes) {
+        values.push(current.trim().replace(/^"|"$/g, ""));
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    values.push(current.trim().replace(/^"|"$/g, ""));
+
     const row = {};
     headers.forEach((h, i) => {
       if (h) row[h] = values[i] || "";
     });
+
     return row;
   });
+
   return rows;
 }
 
@@ -510,7 +530,7 @@ function ComposeModal({ contact, orgId, onClose, onSent }) {
   );
 }
 
-function ContactRow({ c, selected, onClick, communications }) {
+function ContactRow({ c, selected, onClick, communications, onDelete }) {
   const a = AGENTS.find(ag => ag.id === c.assigned_to);
   const recentComms = communications.filter(com => com.contact_id === c.id).slice(0, 3);
   const lastComm = communications.find(com => com.contact_id === c.id);
@@ -541,6 +561,13 @@ function ContactRow({ c, selected, onClick, communications }) {
           </div>
         )}
       </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(c.id); }}
+        style={{ background:"transparent", border:"none", color:C.textMuted, cursor:"pointer", fontSize:14, padding:"0 4px", flexShrink:0 }}
+        title="Delete contact"
+      >
+        ✕
+      </button>
     </div>
   );
 }
@@ -807,6 +834,13 @@ export default function CRM({ orgId }) {
     if (selected?.id === id) setSelected(prev => ({ ...prev, stage }));
   };
 
+  const handleDeleteContact = async (id) => {
+    if (!confirm("Delete this contact permanently?")) return;
+    await supabase.from("contacts").delete().eq("id", id);
+    setContacts(prev => prev.filter(c => c.id !== id));
+    if (selected?.id === id) setSelected(null);
+  };
+
   const filtered = contacts.filter(c => {
     const q = search.toLowerCase();
     const matchSearch = c.name.toLowerCase().includes(q) || (c.company||"").toLowerCase().includes(q);
@@ -839,7 +873,7 @@ export default function CRM({ orgId }) {
         <div style={{ flex:1, overflowY:"auto" }}>
           {loading && <div style={{ padding:32, textAlign:"center", fontSize:12, color:C.textMuted }}>Loading…</div>}
           {!loading && filtered.map(c => (
-            <ContactRow key={c.id} c={c} selected={selected?.id===c.id} onClick={() => setSelected(selected?.id===c.id?null:c)} communications={communications} />
+            <ContactRow key={c.id} c={c} selected={selected?.id===c.id} onClick={() => setSelected(selected?.id===c.id?null:c)} communications={communications} onDelete={handleDeleteContact} />
           ))}
           {!loading && filtered.length===0 && (
             <div style={{ padding:32, textAlign:"center", fontSize:12, color:C.textMuted }}>
