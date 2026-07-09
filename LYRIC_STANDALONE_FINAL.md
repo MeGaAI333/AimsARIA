@@ -97,3 +97,72 @@ This is a different pricing question than standalone: an add-on has **zero incre
 Why tiered instead of one flat add-on price: a flat price (e.g. "$197 for everyone") is simpler to sell but underprices the Elite segment, who get the full agency/white-label feature set and can clearly afford more — and it overprices Starter customers relative to what they're using. Tiering the add-on to match the base plan captures more expansion revenue from Elite without creating friction at the low end.
 
 **Expansion revenue impact:** if even 25–30% of an existing base attaches Lyric at these prices, that's pure margin on top of the core product with no new customer acquisition cost — this is usually the highest-ROI lever available (cheaper than any new-customer channel, including Allegra outbound).
+
+---
+
+## 5. What's actually inside each tier
+
+### Standalone Lyric
+
+**Starter — $97/mo**
+- 1 industry playbook (e.g. Roofing, HVAC — whatever vertical they're in)
+- All platforms (Facebook, Instagram, LinkedIn) but 1 connected account per platform
+- Content types: Post, Reel Script, Email — the highest-usage types, not the full set
+- Calendar + Schedule + Published tabs
+- Basic analytics (impressions, engagement — no attribution)
+- AI credits: enough for ~20–30 pieces of content/month
+- 1 user seat
+- Email support only
+- *Deliberately missing:* Carousel, Newsletter, Blog Post, multi-account per platform, team seats — these are the upgrade hooks to Pro.
+
+**Pro — $297/mo** ⭐
+- Up to 3 industry playbooks (useful if they serve more than one vertical or run multiple brands)
+- Multiple connected accounts per platform (agencies managing several client pages)
+- All content types: Post, Reel Script, Carousel, Email, Newsletter, Blog Post
+- Full Analytics tab — engagement rate, audience growth, best-performing content, exportable reports
+- AI credits: ~100–150 pieces/month
+- Up to 5 user seats with basic role permissions (editor/approver)
+- Content approval workflow (someone drafts, someone else publishes)
+- Priority support (chat, faster response)
+- *Upgrade hook to Studio:* seat cap, no white-label, no API.
+
+**Studio/Agency — $697/mo**
+- Unlimited industry playbooks
+- Unlimited connected accounts
+- Unlimited user seats with full role-based permissions (client-level access control — critical if this is being resold to their own clients)
+- White-label option (their logo/branding, not ours — this is the single biggest reason an agency pays $697 vs $297)
+- API access for custom integrations
+- AI credits: pooled/high-volume, or usage-based overage instead of a hard cap
+- Dedicated onboarding + a named support contact
+- Custom reporting/export for client-facing deliverables
+
+### Add-on (bundled into existing Starter/Pro/Elite)
+
+The add-on shouldn't just be a discounted version of the standalone tier — it should specifically plug the gap in what the base product already does. Their base product (Starter/Pro/Elite) already covers lead capture, CRM, voice/SMS/DM outreach. What it doesn't do is *create and publish content*. So the add-on's job is narrow: give them content production without re-selling capabilities they already have.
+
+| Add-on tier | Included |
+|---|---|
+| **+$79 (on existing Starter)** | 1 industry playbook, Post + Email content types only, basic scheduling, no team seats (matches Starter's solo-operator profile) |
+| **+$147 (on existing Pro)** | All content types, multiple accounts, 3 team seats, full analytics — mirrors their existing Pro-level sophistication (they already have CRM sync + A/B testing on the base product, so Lyric here should feel like a natural extension, not a downgrade in polish) |
+| **+$347 (on existing Elite)** | Everything in Studio/Agency: unlimited seats, white-label, API — since Elite customers are already multi-location/franchise, they need Lyric to support that same structure (per-location content calendars rolling up to one dashboard) |
+
+One thing worth deciding before launch: whether the add-on's AI credits pool *separately* from the base product's AI usage (if the core product already has AI-driven voice/DM, sharing one credit pool avoids customer confusion about "why am I paying for AI twice") or stays fully separate since it's a distinct capability. I'd lean toward a shared credit pool with tiered top-up pricing — simpler billing story, and it reinforces that Lyric is "more of what you already pay for" rather than a bolted-on second product.
+
+---
+
+## 6. Content cap per tier (concrete numbers)
+
+"AI credits" is fuzzy — here's what I'd actually cap, in pieces of content generated/scheduled per month, with overage pricing so nobody hits a hard wall mid-campaign.
+
+| Tier | Included content pieces/mo | What counts as "1 piece" | Overage price |
+|---|---|---|---|
+| **Starter ($97 standalone / +$79 add-on)** | **30/mo** | Any single generated asset: 1 post, 1 email, 1 reel script | $2/piece over cap |
+| **Pro ($297 standalone / +$147 add-on)** | **150/mo** | Same unit, all content types included (carousel = 1 piece, newsletter = 1 piece) | $1.50/piece over cap |
+| **Studio/Agency ($697 standalone / +$347 add-on)** | **600/mo pooled**, then usage-based | Pooled across all connected accounts/clients — an agency running 10 client accounts draws from one pool | $1/piece over cap, or negotiate a custom volume rate above ~1,000/mo |
+
+Why these numbers:
+- **30/mo** ≈ 1/day, which matches a solo operator posting to 1-2 channels — enough to run the product without hitting the ceiling in normal use, but light users won't subsidize heavy ones.
+- **150/mo** ≈ 5/day, which covers a small team running multiple platforms + email/newsletter simultaneously without thinking about the limit.
+- **600/mo pooled** is the number that makes white-label economically sane — an agency reselling to 10 clients at ~60 pieces/client/month is a realistic agency workload, and pooling (vs. per-seat caps) is what agencies actually want since usage varies client to client.
+
+Keep overage priced low enough that it doesn't feel punitive (nobody should get a shock bill) but present enough that it signals "you're outgrowing this tier" — that's the upgrade trigger, more than a sales conversation.
