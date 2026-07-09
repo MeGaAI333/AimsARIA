@@ -69,3 +69,31 @@ Allegra here = our own prospecting/outreach engine, used to build the list and r
 ## Bottom line
 - **Lyric standalone: $97 / $247 / $497 per month**, priced under our existing $497–$1,497 lead-recovery line so the two products don't compete with each other — Lyric becomes the lower-friction entry point, with a natural upsell path into the core product.
 - **Realistic Allegra-driven acquisition: 8–15/month at launch, ramping to 40–60/month by mid-year, 75–90/month by year-end.** 100/month is a believable Q4 stretch goal, not a month-1 assumption.
+
+---
+
+## 4. Revised standalone top tier ($697) + add-on pricing for existing customers
+
+Per your call, bump the standalone Studio/Agency tier to **$697/mo** (up from $497). Revised ladder, spaced proportionally:
+
+| Tier | Standalone price/mo |
+|---|---|
+| Starter | $97 |
+| Pro | $297 |
+| Studio/Agency | **$697** |
+
+Note: at $697 the top tier now sits *between* our existing Starter ($497) and Pro ($797) rather than capped below Starter. That's fine as a standalone SKU sold to net-new buyers who aren't touching our core product — it just means the "never outprice the core product" logic below applies specifically to the **add-on**, not the standalone line.
+
+### Add-on pricing (Lyric bundled into existing Starter/Pro/Elite customers)
+
+This is a different pricing question than standalone: an add-on has **zero incremental CAC** (no new demo, no new deal — it's an upsell email/in-app prompt to someone already paying us). Standard SaaS practice is to price add-ons at roughly **45–55% of standalone-equivalent value** to reward the existing relationship and maximize attach rate, then match the add-on tier to the sophistication of the base plan it's attached to:
+
+| Existing base tier | Add Lyric capability level | Add-on price/mo | New bundled total/mo |
+|---|---|---|---|
+| Starter ($497) | Lyric Starter | **+$79** | $576 |
+| Pro ($797) | Lyric Pro | **+$147** | $944 |
+| Elite ($1,497) | Lyric Studio/Agency | **+$347** | $1,844 |
+
+Why tiered instead of one flat add-on price: a flat price (e.g. "$197 for everyone") is simpler to sell but underprices the Elite segment, who get the full agency/white-label feature set and can clearly afford more — and it overprices Starter customers relative to what they're using. Tiering the add-on to match the base plan captures more expansion revenue from Elite without creating friction at the low end.
+
+**Expansion revenue impact:** if even 25–30% of an existing base attaches Lyric at these prices, that's pure margin on top of the core product with no new customer acquisition cost — this is usually the highest-ROI lever available (cheaper than any new-customer channel, including Allegra outbound).
