@@ -13,7 +13,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, contact_name, contact_phone, contact_email, message, voice_id, agent_id } = body;
+    const { action, contact_name, contact_phone, contact_email, message, voice_id, agent_id, campaign_id } = body;
 
     if (!action || !message) {
       return new Response(JSON.stringify({ error: "action and message required" }), {
@@ -41,7 +41,8 @@ serve(async (req) => {
           task: message,
           voice: voice_id || "june",
           max_duration: 12,
-          webhook_url: `${Deno.env.get("API_BASE_URL") || "https://api.example.com"}/webhooks/bland-call`,
+          webhook_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/bland-webhook`,
+          metadata: { campaign_id: campaign_id || null, agent_id: agent_id || null },
         }),
       });
 

@@ -15,7 +15,8 @@ serve(async (req) => {
     const body = await req.json();
     console.log("Bland webhook received:", body);
 
-    const { call_id, phone_number, duration_seconds, completed, analysis, recording, transcript } = body;
+    const { call_id, phone_number, duration_seconds, completed, analysis, recording, transcript, metadata } = body;
+    const campaign_id = metadata?.campaign_id || null;
 
     if (!call_id || !phone_number) {
       return new Response(JSON.stringify({ error: "Missing call_id or phone_number" }), {
@@ -35,7 +36,8 @@ serve(async (req) => {
       .upsert({
         call_id,
         org_id: body.org_id || "default",
-        agent_id: body.agent_id || "aria",
+        agent_id: metadata?.agent_id || body.agent_id || "aria",
+        campaign_id,
         duration_seconds: duration_seconds || 0,
         transcript: transcript || null,
         recording_url: recording?.url || null,
@@ -49,6 +51,28 @@ serve(async (req) => {
       console.error("Error storing call record:", recordError);
     } else {
       console.log("Call record stored:", call_record.id);
+    }
+
+    // Update the matching campaign_contacts row so campaign results roll up
+    if (campaign_id && phone_number) {
+      const { data: contactMatch } = await supabase
+        .from("contacts")
+        .select("id")
+        .eq("phone", phone_number)
+        .limit(1)
+        .maybeSingle();
+
+      if (contactMatch) {
+        await supabase
+          .from("campaign_contacts")
+          .update({
+            status: completed ? "completed" : "no_answer",
+            duration_seconds: duration_seconds || 0,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("campaign_id", campaign_id)
+          .eq("contact_id", contactMatch.id);
+      }
     }
 
     return new Response(JSON.stringify({ success: true, stored: !!call_record }), {
