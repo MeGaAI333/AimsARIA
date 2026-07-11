@@ -29,5 +29,26 @@ create policy "org members can update campaign_contacts" on campaign_contacts
     campaign_id in (select id from campaigns where org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()))
   );
 
--- Link call recordings back to the campaign that triggered them, so results roll up
-alter table call_recordings add column if not exists campaign_id uuid references campaigns(id);
+-- Stores Bland call outcomes (created here since it was referenced by the webhook
+-- but never actually had a table backing it)
+create table if not exists call_recordings (
+  id uuid default gen_random_uuid() primary key,
+  call_id text unique not null,
+  org_id text not null,
+  agent_id text,
+  campaign_id uuid references campaigns(id),
+  duration_seconds int default 0,
+  transcript text,
+  recording_url text,
+  status text default 'in_progress', -- in_progress, completed
+  completed_at timestamp,
+  created_at timestamp default now()
+);
+
+alter table call_recordings enable row level security;
+
+create policy "org members can view call_recordings" on call_recordings
+  for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+
+-- Written by the bland-webhook edge function using the service role key, which
+-- bypasses RLS — no insert/update policy needed for that path.
