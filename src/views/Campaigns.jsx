@@ -11,6 +11,7 @@ const CAMPAIGN_TYPES = [
   { id: "lead-recovery", label: "Lead Recovery", desc: "Reconnect with cold/lost leads", agent: "aria", stages: ["cold", "lost"] },
   { id: "closing", label: "Closing Sequence", desc: "Convert qualified/negotiating leads", agent: "melody", stages: ["qualified", "negotiating"] },
   { id: "appointment", label: "Appointment Booking", desc: "Book time with contacted leads", agent: "allegra", stages: ["contacted", "qualified"] },
+  { id: "profit-leak-analysis", label: "Profit Leak Analysis", desc: "First-touch diagnostic call for cold leads", agent: "allegra", stages: ["cold"] },
 ];
 
 const CHANNEL_OPTIONS = [
