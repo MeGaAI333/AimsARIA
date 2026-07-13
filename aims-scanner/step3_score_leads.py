@@ -14,6 +14,7 @@ import json
 import time
 import argparse
 import pandas as pd
+import requests
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from config import FIT_WEIGHT, WARMTH_WEIGHT, TIER_1_THRESHOLD, TIER_2_THRESHOLD, TIER_3_THRESHOLD
@@ -125,6 +126,19 @@ def assign_tier(combined_score: float) -> str:
         return "Discard"
 
 
+def post_to_crm_webhook(records: list[dict], webhook_url: str):
+    """POST each scored lead to the configured CRM webhook."""
+    sent = 0
+    for record in records:
+        try:
+            response = requests.post(webhook_url, json=record, timeout=10)
+            response.raise_for_status()
+            sent += 1
+        except Exception as e:
+            print(f"  Warning: webhook post failed for {record.get('name', 'unknown')}: {e}")
+    print(f"  Posted {sent}/{len(records)} leads to CRM webhook")
+
+
 def run(input_path: str, output_path: str):
     df = pd.read_csv(input_path)
 
@@ -168,6 +182,11 @@ def run(input_path: str, output_path: str):
 
     output_df.to_csv(output_path, index=False)
     print(f"\nDone. Saved {len(output_df)} scored businesses → {output_path}")
+
+    webhook_url = os.getenv("AIMS_CRM_WEBHOOK")
+    if webhook_url:
+        print(f"\nPosting {len(output_df)} leads to CRM webhook...")
+        post_to_crm_webhook(output_df.to_dict(orient="records"), webhook_url)
 
     # Summary
     tier_counts = output_df["allegra_tier"].value_counts()
