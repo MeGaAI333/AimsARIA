@@ -128,10 +128,15 @@ def assign_tier(combined_score: float) -> str:
 
 def post_to_crm_webhook(records: list[dict], webhook_url: str):
     """POST each scored lead to the configured CRM webhook."""
+    headers = {}
+    secret = os.getenv("AIMS_CRM_WEBHOOK_SECRET")
+    if secret:
+        headers["x-scanner-secret"] = secret
+
     sent = 0
     for record in records:
         try:
-            response = requests.post(webhook_url, json=record, timeout=10)
+            response = requests.post(webhook_url, json=record, headers=headers, timeout=10)
             response.raise_for_status()
             sent += 1
         except Exception as e:

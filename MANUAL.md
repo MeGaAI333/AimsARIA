@@ -115,6 +115,27 @@ If a webhook post fails for a specific business (CRM down, bad URL, etc.),
 it's logged as a warning and the pipeline continues with the rest — it
 won't stop the whole run or lose the CSV output.
 
+**Wiring it to the AIMS AI Command Center CRM:**
+
+The CRM (branch `claude/aims-command-center-agents-h49o16`) has a
+`scanner-webhook` Supabase Edge Function built for exactly this. Once it's
+deployed:
+
+```
+AIMS_CRM_WEBHOOK=https://<your-project-ref>.supabase.co/functions/v1/scanner-webhook?org_id=<your_org_id>
+```
+
+- `org_id` in the query string controls which org in the CRM these leads
+  land under (defaults to `aims-internal` if omitted).
+- If the Edge Function has `SCANNER_WEBHOOK_SECRET` set (recommended —
+  otherwise this endpoint accepts contact writes from anyone with the URL),
+  also set `AIMS_CRM_WEBHOOK_SECRET` in `.env` to the same value.
+- The function upserts contacts (deduped by phone within the org) and adds
+  a note with the fit/warmth reasoning and suggested opener.
+- Deploy it with `supabase functions deploy scanner-webhook` from the CRM
+  branch, and set its secret with
+  `supabase secrets set SCANNER_WEBHOOK_SECRET=<your-secret>`.
+
 ### Troubleshooting
 
 | Error | Fix |
