@@ -103,7 +103,12 @@ def score_business(row: dict) -> dict:
                 raw = raw.split("```")[1]
                 if raw.startswith("json"):
                     raw = raw[4:]
-            return json.loads(raw)
+            parsed = json.loads(raw)
+            # is_running_ads is already detected from the crawled HTML in step 2
+            # (real pixel/script detection) — drop the AI's redundant guess so it
+            # doesn't collide into a duplicate column.
+            parsed.pop("is_running_ads", None)
+            return parsed
         except json.JSONDecodeError:
             if attempt == 0:
                 time.sleep(1)
