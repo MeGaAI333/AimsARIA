@@ -342,7 +342,7 @@ export default function Campaigns() {
         .eq("org_id", orgId)
         .eq("agent_id", campaign.agent_id)
         .single();
-      const voiceId = agentSettings?.selected_voice || "june";
+      const voiceId = agentSettings?.selected_voice || "21m00Tcm4TlvDq8ikWAM"; // ElevenLabs "Rachel" default
 
       let successCount = 0;
       for (let i = 0; i < matchedContacts.length; i++) {
@@ -363,13 +363,16 @@ export default function Campaigns() {
         const { data, error } = await supabase.functions.invoke("send-outreach", {
           body: {
             action: channel,
+            contact_id: contact.id,
             contact_phone: contact.phone,
             contact_name: contact.name,
             contact_email: contact.email,
             message: personalizedMessage,
+            system_prompt: AGENTS.find(a => a.id === campaign.agent_id)?.systemPrompt || null,
             agent_id: campaign.agent_id,
             voice_id: voiceId,
             campaign_id: campaign.id,
+            org_id: orgId,
           },
         });
 

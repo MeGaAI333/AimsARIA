@@ -149,7 +149,7 @@ export default function AgentPage({ agentId, setActiveTab, orgId, role }) {
   const agent = AGENTS.find(a => a.id === agentId);
   const stats = useOrgStats();
   const [voices, setVoices] = useState([]);
-  const [selectedVoice, setSelectedVoice] = useState("june");
+  const [selectedVoice, setSelectedVoice] = useState("21m00Tcm4TlvDq8ikWAM"); // ElevenLabs "Rachel" default
   const [loadingVoices, setLoadingVoices] = useState(false);
   const [savingVoice, setSavingVoice] = useState(false);
 
@@ -162,8 +162,8 @@ export default function AgentPage({ agentId, setActiveTab, orgId, role }) {
     const loadVoices = async () => {
       setLoadingVoices(true);
       try {
-        // Get available voices from Bland
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bland-voices`, {
+        // Get available voices from ElevenLabs
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-voices`, {
           headers: { "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` }
         });
         const data = await res.json();

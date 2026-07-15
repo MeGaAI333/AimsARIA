@@ -13,7 +13,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, contact_name, contact_phone, contact_email, message, voice_id, agent_id, campaign_id } = body;
+    const { action, contact_id, contact_name, contact_phone, contact_email, message, system_prompt, voice_id, agent_id, campaign_id, org_id } = body;
 
     if (!action || !message) {
       return new Response(JSON.stringify({ error: "action and message required" }), {
@@ -30,25 +30,72 @@ serve(async (req) => {
         });
       }
 
-      const res = await fetch("https://api.bland.ai/v1/calls", {
+      const twilio_sid = Deno.env.get("TWILIO_ACCOUNT_SID");
+      const twilio_auth = Deno.env.get("TWILIO_AUTH_TOKEN");
+      const twilio_from = Deno.env.get("TWILIO_PHONE_NUMBER");
+      const voiceAgentBaseUrl = Deno.env.get("VOICE_AGENT_BASE_URL"); // e.g. https://aimsai.aimsmarketingsystems.com
+
+      if (!twilio_sid || !twilio_auth || !twilio_from || !voiceAgentBaseUrl) {
+        return new Response(JSON.stringify({ error: "Twilio or voice agent not configured" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        });
+      }
+
+      // Stash call context for the voice-agent service to read once Twilio connects.
+      // Twilio's TwiML webhook is a bare HTTP request with no room to carry a full
+      // script + agent persona, so we hand it a row id instead.
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+
+      const { data: ctx, error: ctxError } = await supabase
+        .from("voice_call_contexts")
+        .insert({
+          org_id: org_id || "default",
+          agent_id: agent_id || "aria",
+          campaign_id: campaign_id || null,
+          contact_id: contact_id || null,
+          contact_name: contact_name || null,
+          contact_phone,
+          opening_message: message,
+          system_prompt: system_prompt || null,
+          voice_id: voice_id || "21m00Tcm4TlvDq8ikWAM",
+          direction: "outbound",
+        })
+        .select()
+        .single();
+
+      if (ctxError || !ctx) {
+        console.error("Error storing voice call context:", ctxError);
+        return new Response(JSON.stringify({ error: "Failed to prepare call context" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        });
+      }
+
+      const auth = btoa(`${twilio_sid}:${twilio_auth}`);
+      const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilio_sid}/Calls.json`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${Deno.env.get("BLAND_API_KEY")}`,
-          "Content-Type": "application/json",
+          "Authorization": `Basic ${auth}`,
+          "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: JSON.stringify({
-          phone_number: contact_phone,
-          task: message,
-          voice: voice_id || "june",
-          max_duration: 12,
-          webhook_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/bland-webhook`,
-          metadata: { campaign_id: campaign_id || null, agent_id: agent_id || null },
-        }),
+        body: new URLSearchParams({
+          To: contact_phone,
+          From: twilio_from,
+          Url: `${voiceAgentBaseUrl}/voice/outbound?ctx=${ctx.id}`,
+          StatusCallback: `${voiceAgentBaseUrl}/voice/status?ctx=${ctx.id}`,
+          StatusCallbackEvent: "completed",
+          Method: "POST",
+        }).toString(),
       });
 
       if (!res.ok) {
         const err = await res.text();
-        console.error("Bland API error:", err);
+        console.error("Twilio Voice API error:", err);
         return new Response(JSON.stringify({ error: err }), {
           status: res.status,
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
@@ -56,7 +103,7 @@ serve(async (req) => {
       }
 
       const data = await res.json();
-      return new Response(JSON.stringify({ success: true, call_id: data.call_id }), {
+      return new Response(JSON.stringify({ success: true, call_id: data.sid }), {
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
     }
