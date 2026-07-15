@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { C, AGENTS } from "../data.js";
+import { C, AGENTS, DEEPGRAM_VOICES } from "../data.js";
 import { AgentAvatar, Badge, ChannelBadge, PulsingDot } from "../components/utils.jsx";
 import { supabase } from "../lib/supabase.js";
 
@@ -148,62 +148,62 @@ function LiveChat({ agent }) {
 export default function AgentPage({ agentId, setActiveTab, orgId, role }) {
   const agent = AGENTS.find(a => a.id === agentId);
   const stats = useOrgStats();
-  const [voices, setVoices] = useState([]);
-  const [selectedVoice, setSelectedVoice] = useState("21m00Tcm4TlvDq8ikWAM"); // ElevenLabs "Rachel" default
-  const [loadingVoices, setLoadingVoices] = useState(false);
+  const [voiceConfigStatus, setVoiceConfigStatus] = useState("loading"); // loading | configured | missing
+  const [voiceConfigRow, setVoiceConfigRow] = useState(null); // the row this org will edit (org-specific or global)
+  const [selectedVoiceId, setSelectedVoiceId] = useState("");
   const [savingVoice, setSavingVoice] = useState(false);
+  const [currentOrgId, setCurrentOrgId] = useState(null);
 
   if (!agent) return <div style={{ padding:40, color:C.textMuted }}>Agent not found.</div>;
 
   const kpis = agentKpis(agentId, stats);
 
-  // Load available voices and current selection
+  // The prompt/greeting/functions are configured directly in Deepgram — this
+  // only manages which Aura-2 voice speaks them (agent_voice_configs.settings.agent.speak).
   useEffect(() => {
-    const loadVoices = async () => {
-      setLoadingVoices(true);
-      try {
-        // Get available voices from ElevenLabs
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-voices`, {
-          headers: { "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` }
-        });
-        const data = await res.json();
-        if (data.voices) setVoices(data.voices);
+    const loadVoiceConfig = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const orgId = user?.user_metadata?.org_id || user?.id;
+      setCurrentOrgId(orgId);
 
-        // Get current agent voice setting
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const orgId = user.user_metadata?.org_id || user.id;
-          const { data: settings } = await supabase
-            .from("agent_settings")
-            .select("selected_voice")
-            .eq("org_id", orgId)
-            .eq("agent_id", agentId)
-            .single();
+      const { data: rows } = await supabase
+        .from("agent_voice_configs")
+        .select("*")
+        .eq("agent_id", agentId)
+        .or(`org_id.eq.${orgId || "__none__"},org_id.is.null`);
 
-          if (settings) setSelectedVoice(settings.selected_voice);
-        }
-      } catch (err) {
-        console.error("Error loading voices:", err);
-      } finally {
-        setLoadingVoices(false);
+      if (!rows || rows.length === 0) {
+        setVoiceConfigStatus("missing");
+        return;
       }
+
+      const orgSpecific = rows.find(r => r.org_id === orgId);
+      const row = orgSpecific || rows.find(r => r.org_id === null) || rows[0];
+      setVoiceConfigRow(row);
+      setVoiceConfigStatus("configured");
+
+      const model = row.settings?.agent?.speak?.provider?.model || "";
+      const match = model.match(/^aura-2-(.+)-en$/);
+      setSelectedVoiceId(match ? match[1] : "");
     };
-    loadVoices();
+    loadVoiceConfig();
   }, [agentId]);
 
   const handleVoiceChange = async (voiceId) => {
-    setSelectedVoice(voiceId);
+    setSelectedVoiceId(voiceId);
+    if (!voiceConfigRow || !currentOrgId) return;
     setSavingVoice(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const orgId = user.user_metadata?.org_id || user.id;
+      const updatedSettings = JSON.parse(JSON.stringify(voiceConfigRow.settings));
+      updatedSettings.agent.speak = { provider: { type: "deepgram", model: `aura-2-${voiceId}-en` } };
 
-      await supabase.from("agent_settings").upsert({
-        org_id: orgId,
+      await supabase.from("agent_voice_configs").upsert({
+        org_id: currentOrgId,
         agent_id: agentId,
-        selected_voice: voiceId,
-      });
+        settings: updatedSettings,
+      }, { onConflict: "org_id,agent_id" });
+
+      setVoiceConfigRow(prev => ({ ...prev, org_id: currentOrgId, settings: updatedSettings }));
     } catch (err) {
       console.error("Error saving voice:", err);
       alert("Failed to save voice selection");
@@ -243,34 +243,40 @@ export default function AgentPage({ agentId, setActiveTab, orgId, role }) {
           <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:22, marginBottom:16 }}>
             <h3 style={{ margin:"0 0 16px", fontSize:14, fontWeight:700, color:C.textPrimary }}>Brand Voice</h3>
 
-            {/* Voice Selection */}
-            <div style={{ marginBottom:16 }}>
-              <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>Voice</label>
-              <select
-                value={selectedVoice}
-                onChange={e => handleVoiceChange(e.target.value)}
-                disabled={loadingVoices || savingVoice}
-                style={{
-                  width:"100%",
-                  padding:"10px 14px",
-                  borderRadius:8,
-                  background:C.surface,
-                  border:`1px solid ${C.border}`,
-                  color:C.textPrimary,
-                  fontSize:13,
-                  cursor:"pointer",
-                }}
-              >
-                {voices.length === 0 ? (
-                  <option>Loading voices...</option>
-                ) : (
-                  voices.map(v => (
-                    <option key={v.voice_id} value={v.voice_id}>{v.name}</option>
-                  ))
+            {/* Voice calling status — voice/prompt itself is configured in Deepgram, not here */}
+            {agent.channels.includes("voice") && (
+              <div style={{
+                marginBottom:16, padding:"10px 14px", borderRadius:8,
+                background: voiceConfigStatus === "configured" ? `${C.green}12` : voiceConfigStatus === "missing" ? `${C.amber}12` : C.surface,
+                border: `1px solid ${voiceConfigStatus === "configured" ? C.green : voiceConfigStatus === "missing" ? C.amber : C.border}`,
+              }}>
+                <div style={{ fontSize:11, fontWeight:800, textTransform:"uppercase", letterSpacing:0.5, marginBottom:4, color: voiceConfigStatus === "configured" ? C.green : voiceConfigStatus === "missing" ? C.amber : C.textSecondary }}>
+                  Voice Calling
+                </div>
+                <div style={{ fontSize:12, color:C.textSecondary }}>
+                  {voiceConfigStatus === "loading" && "Checking…"}
+                  {voiceConfigStatus === "configured" && "✓ Configured (Deepgram Voice Agent) — ready to make/receive real-time calls."}
+                  {voiceConfigStatus === "missing" && "⚠ Not yet configured — this agent can't make or receive real-time calls until a Deepgram Voice Agent config is added for it."}
+                </div>
+
+                {voiceConfigStatus === "configured" && (
+                  <div style={{ marginTop:10 }}>
+                    <label style={{ display:"block", fontSize:10, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Aura-2 Voice</label>
+                    <select
+                      value={selectedVoiceId}
+                      onChange={e => handleVoiceChange(e.target.value)}
+                      disabled={savingVoice}
+                      style={{ width:"100%", padding:"8px 12px", borderRadius:7, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:12, cursor:"pointer" }}
+                    >
+                      {DEEPGRAM_VOICES.map(v => (
+                        <option key={v.id} value={v.id}>{v.id.charAt(0).toUpperCase() + v.id.slice(1)}{v.desc ? ` — ${v.desc}` : ""}</option>
+                      ))}
+                    </select>
+                    {savingVoice && <div style={{ fontSize:11, color:C.textSecondary, marginTop:6 }}>Saving…</div>}
+                  </div>
                 )}
-              </select>
-              {savingVoice && <div style={{ fontSize:11, color:C.textSecondary, marginTop:6 }}>Saving…</div>}
-            </div>
+              </div>
+            )}
 
             <div style={{ padding:"10px 14px", borderRadius:8, background:`${agent.color}10`, border:`1px solid ${agent.color}25`, marginBottom:14 }}>
               <div style={{ fontSize:11, fontWeight:800, color:agent.color, textTransform:"uppercase", letterSpacing:0.5, marginBottom:4 }}>Tone</div>

@@ -372,6 +372,53 @@ IN THIS CHAT: When helping AIMS team members or prospects, stay in character as 
   },
 ];
 
+// ── DEEPGRAM AURA-2 VOICES ────────────────────────────────────────────────────
+// Static catalog (Deepgram doesn't expose a "list voices" API — these are fixed
+// model ids). Descriptions only included where Deepgram's own docs describe them;
+// left blank rather than guessed for the rest.
+export const DEEPGRAM_VOICES = [
+  { id: "thalia", model: "aura-2-thalia-en", desc: "Bright, dynamic — retail & promotional" },
+  { id: "luna", model: "aura-2-luna-en", desc: "Warm, conversational (default)" },
+  { id: "athena", model: "aura-2-athena-en", desc: "Warm, conversational" },
+  { id: "iris", model: "aura-2-iris-en", desc: "Warm, conversational" },
+  { id: "amalthea", model: "aura-2-amalthea-en", desc: "" },
+  { id: "andromeda", model: "aura-2-andromeda-en", desc: "" },
+  { id: "apollo", model: "aura-2-apollo-en", desc: "" },
+  { id: "arcas", model: "aura-2-arcas-en", desc: "" },
+  { id: "aries", model: "aura-2-aries-en", desc: "" },
+  { id: "asteria", model: "aura-2-asteria-en", desc: "" },
+  { id: "atlas", model: "aura-2-atlas-en", desc: "" },
+  { id: "aurora", model: "aura-2-aurora-en", desc: "" },
+  { id: "callista", model: "aura-2-callista-en", desc: "" },
+  { id: "cora", model: "aura-2-cora-en", desc: "" },
+  { id: "cordelia", model: "aura-2-cordelia-en", desc: "" },
+  { id: "delia", model: "aura-2-delia-en", desc: "" },
+  { id: "draco", model: "aura-2-draco-en", desc: "" },
+  { id: "electra", model: "aura-2-electra-en", desc: "" },
+  { id: "harmonia", model: "aura-2-harmonia-en", desc: "" },
+  { id: "helena", model: "aura-2-helena-en", desc: "" },
+  { id: "hera", model: "aura-2-hera-en", desc: "" },
+  { id: "hermes", model: "aura-2-hermes-en", desc: "" },
+  { id: "hyperion", model: "aura-2-hyperion-en", desc: "" },
+  { id: "janus", model: "aura-2-janus-en", desc: "" },
+  { id: "juno", model: "aura-2-juno-en", desc: "" },
+  { id: "jupiter", model: "aura-2-jupiter-en", desc: "" },
+  { id: "mars", model: "aura-2-mars-en", desc: "" },
+  { id: "minerva", model: "aura-2-minerva-en", desc: "" },
+  { id: "neptune", model: "aura-2-neptune-en", desc: "" },
+  { id: "odysseus", model: "aura-2-odysseus-en", desc: "" },
+  { id: "ophelia", model: "aura-2-ophelia-en", desc: "" },
+  { id: "orion", model: "aura-2-orion-en", desc: "" },
+  { id: "orpheus", model: "aura-2-orpheus-en", desc: "" },
+  { id: "pandora", model: "aura-2-pandora-en", desc: "" },
+  { id: "phoebe", model: "aura-2-phoebe-en", desc: "" },
+  { id: "pluto", model: "aura-2-pluto-en", desc: "" },
+  { id: "saturn", model: "aura-2-saturn-en", desc: "" },
+  { id: "theia", model: "aura-2-theia-en", desc: "" },
+  { id: "vesta", model: "aura-2-vesta-en", desc: "" },
+  { id: "zeus", model: "aura-2-zeus-en", desc: "" },
+];
+
 // ── PIPELINE STAGES ───────────────────────────────────────────────────────────
 export const PIPELINE_STAGES = [
   { id: "cold",        label: "Cold",          color: C.textSecondary, agent: "aria" },

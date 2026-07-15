@@ -13,7 +13,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, contact_id, contact_name, contact_phone, contact_email, message, system_prompt, voice_id, agent_id, campaign_id, org_id } = body;
+    const { action, contact_id, contact_name, contact_phone, contact_email, message, agent_id, campaign_id, org_id } = body;
 
     if (!action || !message) {
       return new Response(JSON.stringify({ error: "action and message required" }), {
@@ -51,18 +51,18 @@ serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       );
 
+      // opening_message is a fallback only — agents with a Deepgram Voice Agent
+      // config (agent_voice_configs) speak from their own greeting/prompt instead.
       const { data: ctx, error: ctxError } = await supabase
         .from("voice_call_contexts")
         .insert({
-          org_id: org_id || "default",
+          org_id: org_id || null,
           agent_id: agent_id || "aria",
           campaign_id: campaign_id || null,
           contact_id: contact_id || null,
           contact_name: contact_name || null,
           contact_phone,
           opening_message: message,
-          system_prompt: system_prompt || null,
-          voice_id: voice_id || "21m00Tcm4TlvDq8ikWAM",
           direction: "outbound",
         })
         .select()

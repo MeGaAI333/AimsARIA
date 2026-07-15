@@ -336,14 +336,6 @@ export default function Campaigns() {
 
       const channel = campaign.channel || "call";
 
-      const { data: agentSettings } = await supabase
-        .from("agent_settings")
-        .select("selected_voice")
-        .eq("org_id", orgId)
-        .eq("agent_id", campaign.agent_id)
-        .single();
-      const voiceId = agentSettings?.selected_voice || "21m00Tcm4TlvDq8ikWAM"; // ElevenLabs "Rachel" default
-
       let successCount = 0;
       for (let i = 0; i < matchedContacts.length; i++) {
         const contact = matchedContacts[i];
@@ -367,10 +359,11 @@ export default function Campaigns() {
             contact_phone: contact.phone,
             contact_name: contact.name,
             contact_email: contact.email,
+            // For "call": this is a fallback only — Allegra (and any other
+            // Deepgram Voice Agent-driven agent) speaks from its own configured
+            // greeting/prompt, not this field. It's the real message for text/email.
             message: personalizedMessage,
-            system_prompt: AGENTS.find(a => a.id === campaign.agent_id)?.systemPrompt || null,
             agent_id: campaign.agent_id,
-            voice_id: voiceId,
             campaign_id: campaign.id,
             org_id: orgId,
           },

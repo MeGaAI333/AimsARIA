@@ -10,7 +10,8 @@ const VOICE_AGENT_BASE_URL = process.env.VOICE_AGENT_BASE_URL;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -32,6 +33,16 @@ function streamTwiml(ctxId) {
 </Response>`;
 }
 
+async function hangupCall(callSid) {
+  if (!callSid || !TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) return;
+  const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64");
+  await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`, {
+    method: "POST",
+    headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ Status: "completed" }).toString(),
+  }).catch(err => console.error("Error hanging up call:", err.message));
+}
+
 // Twilio hits this right after an outbound call (originated by send-outreach) connects.
 app.post("/voice/outbound", (req, res) => {
   const ctxId = req.query.ctx;
@@ -39,20 +50,18 @@ app.post("/voice/outbound", (req, res) => {
   res.type("text/xml").send(streamTwiml(ctxId));
 });
 
-// Twilio hits this when someone calls in to a number pointed at MUSE (inbound-only agent).
+// Twilio hits this when someone calls in to a number pointed at an inbound agent (e.g. MUSE).
 app.post("/voice/incoming", async (req, res) => {
   try {
     const fromNumber = req.body.From;
-    const toNumber = req.body.To;
 
     const { data: ctx, error } = await supabase
       .from("voice_call_contexts")
       .insert({
-        org_id: "default",
+        org_id: null,
         agent_id: "muse",
         contact_phone: fromNumber,
-        opening_message: "Thanks for calling! This is MUSE from AIMS. How can I help you today?",
-        voice_id: "21m00Tcm4TlvDq8ikWAM",
+        opening_message: "",
         direction: "inbound",
       })
       .select()
@@ -82,7 +91,7 @@ app.post("/voice/status", async (req, res) => {
       if (ctx) {
         await supabase.from("call_recordings").upsert({
           call_id: callSid,
-          org_id: ctx.org_id,
+          org_id: ctx.org_id || "default",
           agent_id: ctx.agent_id,
           campaign_id: ctx.campaign_id,
           duration_seconds: 0,
@@ -121,21 +130,22 @@ server.on("upgrade", (req, socket, head) => {
   }
 });
 
-async function askClaude(systemPrompt, messages) {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/call-claude`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      system: systemPrompt,
-      messages: messages.map(m => ({ role: m.role, content: m.content })),
-    }),
-  });
-  const data = await res.json();
-  return data.content?.[0]?.text || "I'm sorry, could you repeat that?";
+// Looks up the org-specific config first, falls back to the global default for that agent.
+async function loadAgentSettings(agentId, orgId) {
+  const { data: rows } = await supabase
+    .from("agent_voice_configs")
+    .select("settings, org_id")
+    .eq("agent_id", agentId)
+    .or(`org_id.eq.${orgId || "__none__"},org_id.is.null`);
+
+  if (!rows || rows.length === 0) return null;
+  const orgSpecific = rows.find(r => r.org_id === orgId);
+  return orgSpecific ? orgSpecific.settings : rows.find(r => r.org_id === null)?.settings || rows[0].settings;
+}
+
+function personalize(text, contactName) {
+  if (!text) return text;
+  return text.replace(/\{\{name\}\}/g, contactName || "there");
 }
 
 wss.on("connection", (twilioWs) => {
@@ -144,96 +154,113 @@ wss.on("connection", (twilioWs) => {
     callSid: null,
     ctx: null,
     deepgramWs: null,
-    elevenWs: null,
-    history: [],
-    assistantSpeaking: false,
     startedAt: null,
     fullTranscript: [],
+    ended: false,
   };
 
-  function sendToTwilio(payloadBase64) {
+  async function finalizeCall() {
+    if (call.ended) return;
+    call.ended = true;
+
+    const durationSeconds = call.startedAt ? Math.round((Date.now() - call.startedAt) / 1000) : 0;
+    if (call.deepgramWs && call.deepgramWs.readyState === WebSocket.OPEN) call.deepgramWs.close();
+
+    if (call.ctx) {
+      await supabase.from("call_recordings").upsert({
+        call_id: call.callSid,
+        org_id: call.ctx.org_id || "default",
+        agent_id: call.ctx.agent_id,
+        campaign_id: call.ctx.campaign_id,
+        duration_seconds: durationSeconds,
+        transcript: call.fullTranscript.join("\n"),
+        status: "completed",
+        completed_at: new Date().toISOString(),
+      }, { onConflict: "call_id" });
+
+      if (call.ctx.campaign_id && call.ctx.contact_id) {
+        await supabase
+          .from("campaign_contacts")
+          .update({ status: "completed", duration_seconds: durationSeconds, updated_at: new Date().toISOString() })
+          .eq("campaign_id", call.ctx.campaign_id)
+          .eq("contact_id", call.ctx.contact_id);
+      }
+    }
+  }
+
+  function connectDeepgramAgent(settings) {
+    const dg = new WebSocket("wss://agent.deepgram.com/v1/agent/converse", {
+      headers: { Authorization: `Token ${DEEPGRAM_API_KEY}` },
+    });
+
+    dg.on("open", () => {
+      // Force the audio format to match Twilio exactly (mulaw/8000 both ways)
+      // regardless of what was captured while testing in Deepgram's console,
+      // so no transcoding is needed on either side of this bridge.
+      const settingsMessage = {
+        ...settings,
+        audio: {
+          input: { encoding: "mulaw", sample_rate: 8000 },
+          output: { encoding: "mulaw", sample_rate: 8000, container: "none" },
+        },
+      };
+      if (settingsMessage.agent?.greeting) {
+        settingsMessage.agent.greeting = personalize(settingsMessage.agent.greeting, call.ctx.contact_name);
+      }
+      dg.send(JSON.stringify(settingsMessage));
+    });
+
+    dg.on("message", (raw, isBinary) => {
+      if (isBinary) {
+        sendAudioToTwilio(raw.toString("base64"));
+        return;
+      }
+
+      let msg;
+      try { msg = JSON.parse(raw.toString()); } catch { return; }
+
+      switch (msg.type) {
+        case "ConversationText":
+          call.fullTranscript.push(`${msg.role === "user" ? "Caller" : "Agent"}: ${msg.content}`);
+          break;
+        case "UserStartedSpeaking":
+          clearTwilioPlayback();
+          break;
+        case "FunctionCallRequest": {
+          const call_id = msg.function_call_id || msg.id;
+          dg.send(JSON.stringify({
+            type: "FunctionCallResponse",
+            function_call_id: call_id,
+            name: msg.function_name || msg.name,
+            content: "ok",
+          }));
+          if ((msg.function_name || msg.name) === "end_conversation") {
+            setTimeout(() => hangupCall(call.callSid), 2500);
+          }
+          break;
+        }
+        case "Error":
+          console.error("Deepgram agent error:", msg);
+          break;
+        default:
+          break;
+      }
+    });
+
+    dg.on("error", (err) => console.error("Deepgram agent connection error:", err.message));
+    dg.on("close", () => finalizeCall());
+
+    call.deepgramWs = dg;
+  }
+
+  function sendAudioToTwilio(payloadBase64) {
     if (!call.streamSid) return;
-    twilioWs.send(JSON.stringify({
-      event: "media",
-      streamSid: call.streamSid,
-      media: { payload: payloadBase64 },
-    }));
+    twilioWs.send(JSON.stringify({ event: "media", streamSid: call.streamSid, media: { payload: payloadBase64 } }));
   }
 
   function clearTwilioPlayback() {
     if (!call.streamSid) return;
     twilioWs.send(JSON.stringify({ event: "clear", streamSid: call.streamSid }));
-  }
-
-  function connectDeepgram() {
-    const dgUrl = "wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&interim_results=true&endpointing=300&punctuate=true";
-    const dg = new WebSocket(dgUrl, { headers: { Authorization: `Token ${DEEPGRAM_API_KEY}` } });
-
-    dg.on("message", (raw) => {
-      let msg;
-      try { msg = JSON.parse(raw.toString()); } catch { return; }
-      const alt = msg.channel?.alternatives?.[0];
-      const transcript = alt?.transcript;
-      if (!transcript) return;
-
-      // Barge-in: caller started talking while the agent's audio is still playing.
-      if (call.assistantSpeaking) {
-        clearTwilioPlayback();
-        call.assistantSpeaking = false;
-      }
-
-      if (msg.is_final && msg.speech_final) {
-        handleUserUtterance(transcript);
-      }
-    });
-
-    dg.on("error", (err) => console.error("Deepgram error:", err.message));
-    call.deepgramWs = dg;
-  }
-
-  function connectElevenLabs() {
-    const voiceId = call.ctx.voice_id;
-    const url = `wss://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream-input?model_id=eleven_turbo_v2_5&output_format=ulaw_8000`;
-    const el = new WebSocket(url, { headers: { "xi-api-key": ELEVENLABS_API_KEY } });
-
-    el.on("open", () => {
-      el.send(JSON.stringify({
-        text: " ",
-        voice_settings: { stability: 0.5, similarity_boost: 0.8 },
-        generation_config: { chunk_length_schedule: [50, 90, 120, 150] },
-      }));
-    });
-
-    el.on("message", (raw) => {
-      let msg;
-      try { msg = JSON.parse(raw.toString()); } catch { return; }
-      if (msg.audio) {
-        call.assistantSpeaking = true;
-        sendToTwilio(msg.audio);
-      }
-    });
-
-    el.on("error", (err) => console.error("ElevenLabs error:", err.message));
-    call.elevenWs = el;
-  }
-
-  function speak(text) {
-    if (!call.elevenWs || call.elevenWs.readyState !== WebSocket.OPEN) return;
-    call.elevenWs.send(JSON.stringify({ text: `${text} `, try_trigger_generation: true }));
-  }
-
-  async function handleUserUtterance(transcript) {
-    call.history.push({ role: "user", content: transcript });
-    call.fullTranscript.push(`Caller: ${transcript}`);
-
-    const reply = await askClaude(call.ctx.system_prompt || defaultSystemPrompt(call.ctx.agent_id), call.history);
-    call.history.push({ role: "assistant", content: reply });
-    call.fullTranscript.push(`Agent: ${reply}`);
-    speak(reply);
-  }
-
-  function defaultSystemPrompt(agentId) {
-    return `You are ${(agentId || "an AIMS AI").toUpperCase()}, an AI voice agent for AIMS AI making a phone call. Keep responses short, natural, and conversational — this is a live phone call, not a chat. One or two sentences per turn unless asked for more detail.`;
   }
 
   twilioWs.on("message", async (raw) => {
@@ -256,16 +283,16 @@ wss.on("connection", (twilioWs) => {
         twilioWs.close();
         return;
       }
-
       call.ctx = ctx;
-      call.history.push({ role: "assistant", content: ctx.opening_message });
-      call.fullTranscript.push(`Agent: ${ctx.opening_message}`);
 
-      connectDeepgram();
-      connectElevenLabs();
+      const settings = await loadAgentSettings(ctx.agent_id, ctx.org_id);
+      if (!settings) {
+        console.error(`No Deepgram voice config found for agent "${ctx.agent_id}"`);
+        twilioWs.close();
+        return;
+      }
 
-      // Give the ElevenLabs socket a moment to open before we speak the opener.
-      setTimeout(() => speak(ctx.opening_message), 300);
+      connectDeepgramAgent(settings);
       return;
     }
 
@@ -277,43 +304,12 @@ wss.on("connection", (twilioWs) => {
     }
 
     if (msg.event === "stop") {
-      const durationSeconds = call.startedAt ? Math.round((Date.now() - call.startedAt) / 1000) : 0;
-
-      if (call.deepgramWs) call.deepgramWs.close();
-      if (call.elevenWs) call.elevenWs.close();
-
-      if (call.ctx) {
-        await supabase.from("call_recordings").upsert({
-          call_id: call.callSid,
-          org_id: call.ctx.org_id,
-          agent_id: call.ctx.agent_id,
-          campaign_id: call.ctx.campaign_id,
-          duration_seconds: durationSeconds,
-          transcript: call.fullTranscript.join("\n"),
-          status: "completed",
-          completed_at: new Date().toISOString(),
-        }, { onConflict: "call_id" });
-
-        if (call.ctx.campaign_id && call.ctx.contact_id) {
-          await supabase
-            .from("campaign_contacts")
-            .update({
-              status: "completed",
-              duration_seconds: durationSeconds,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("campaign_id", call.ctx.campaign_id)
-            .eq("contact_id", call.ctx.contact_id);
-        }
-      }
+      await finalizeCall();
       return;
     }
   });
 
-  twilioWs.on("close", () => {
-    if (call.deepgramWs) call.deepgramWs.close();
-    if (call.elevenWs) call.elevenWs.close();
-  });
+  twilioWs.on("close", () => finalizeCall());
 });
 
 server.listen(PORT, () => {
