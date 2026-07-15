@@ -144,3 +144,60 @@ AIMS_CRM_WEBHOOK=https://<your-project-ref>.supabase.co/functions/v1/scanner-web
 | `REQUEST_DENIED (invalid API key)` | Check `GOOGLE_PLACES_API_KEY` in `.env` for typos — copy it again from Google Cloud Console → Credentials. |
 | `REQUEST_DENIED (must enable Billing)` | Link/create a billing account for the project in Google Cloud Console → Billing. Required even though Places API has a free tier. |
 | `TypeError: Client.__init__() got an unexpected keyword argument 'proxies'` | Version mismatch between `anthropic` and `httpx`. Run `pip install "httpx==0.27.2"`. Already pinned in `requirements.txt` as of this writing. |
+
+### Quick command reference
+
+**Getting started (every new terminal session):**
+```bash
+cd ~/command-center/aims-scanner
+source venv/bin/activate
+```
+
+**Running scans:**
+```bash
+python run_pipeline.py --vertical plumber --location "Miami FL"
+python run_pipeline.py --all-verticals --location "Miami FL"
+python run_pipeline.py --all-verticals --location "Miami FL" --limit 5   # quick test
+```
+
+**Finding results:**
+```bash
+ls -t output/ | head -1              # newest run folder
+ls output/<timestamp>/               # files inside it
+```
+
+**Viewing a CSV in the terminal:**
+```bash
+cat output/<timestamp>/<file>.csv | column -s, -t | less -S
+# in less: right arrow scrolls sideways, q quits
+```
+
+**Combining all verticals from one run into one file:**
+```bash
+head -1 output/<timestamp>/hvac_<city>_scored.csv > output/<timestamp>/all_leads.csv
+for f in output/<timestamp>/*_scored.csv; do tail -n +2 "$f"; done >> output/<timestamp>/all_leads.csv
+```
+
+**Filtering to just hot leads (Tier 1/2 only):**
+```bash
+head -1 output/<timestamp>/hvac_<city>_scored.csv > output/<timestamp>/hot_leads.csv
+for f in output/<timestamp>/*_scored.csv; do awk -F',' 'NR>1 && ($1 ~ /Tier 1|Tier 2/)' "$f"; done >> output/<timestamp>/hot_leads.csv
+```
+
+**Getting a file to a Windows computer** (run from PowerShell on the Windows machine, not the Ubuntu terminal):
+```powershell
+scp meghan@<server-ip>:~/command-center/aims-scanner/output/<timestamp>/<file>.csv C:\Users\<you>\OneDrive\Desktop\<file>.csv
+```
+Check `OneDrive\Desktop` vs plain `Desktop` first with `Test-Path` — OneDrive commonly redirects the real Desktop folder.
+
+**Managing the scheduled cron job:**
+```bash
+crontab -l      # view current schedule
+crontab -e      # edit it
+crontab -r      # remove all scheduled jobs (careful — deletes everything)
+```
+
+**Checking the last automated run:**
+```bash
+cat ~/command-center/aims-scanner/logs/pipeline.log
+```
