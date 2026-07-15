@@ -67,6 +67,15 @@ Each row is one business with:
 - `suggested_opener` — a specific opening line for that business
 - contact details (phone, website, address)
 
+**Master workbook:** every run also automatically produces
+`output/<timestamp>/AIMS_Leads_Master.xlsx` — one Excel tab per
+vertical (sorted hottest lead first), plus a `Summary` tab with lead
+counts by tier per vertical. Plain functional formatting (bold
+header, frozen top row), no color branding. This is the single file
+worth pulling onto your own computer after a run — see the transfer
+command in the Quick command reference below. To rebuild it manually
+for an older run: `python build_workbook.py --input-dir output/<timestamp>`
+
 View a CSV readably in the terminal:
 ```bash
 cat output/<timestamp>/<file>.csv | column -s, -t | less -S
