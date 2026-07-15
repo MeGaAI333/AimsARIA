@@ -4,17 +4,22 @@ All verticals, scoring weights, and thresholds live here.
 Change these without touching the main scanner code.
 """
 
-# ── Verticals ────────────────────────────────────────────────────────────────
+# ── Verticals (14 — matches the AIMS combined lead-list taxonomy) ────────────
 VERTICALS = {
-    "plumber":           ["plumber", "plumbing", "plumbing contractor"],
+    "contractor":        ["general contractor", "home remodeling contractor", "construction contractor"],
     "electrician":       ["electrician", "electrical contractor", "electrical services"],
-    "hvac":              ["HVAC", "heating and cooling", "air conditioning contractor", "AC repair"],
     "roofer":            ["roofing contractor", "roofer", "roof repair"],
-    "pi_attorney":       ["personal injury attorney", "personal injury lawyer", "accident attorney"],
-    "medspa":            ["medspa", "med spa", "medical spa", "aesthetics clinic"],
+    "plumber":           ["plumber", "plumbing", "plumbing contractor"],
+    "hvac":              ["HVAC", "heating and cooling", "air conditioning contractor", "AC repair"],
+    "landscaping":       ["landscaping company", "lawn care service", "landscape contractor"],
+    "physicians":        ["medical practice", "physicians office", "family medicine clinic"],
     "dental":            ["dentist", "dental office", "dental practice"],
+    "medspa":            ["medspa", "med spa", "medical spa", "aesthetics clinic"],
+    "attorney":          ["law firm", "attorney", "legal services"],
     "insurance_agency":  ["insurance agency", "insurance broker", "insurance agent"],
     "financial_advisor": ["financial advisor", "financial planner", "wealth management", "IMO"],
+    "real_estate":       ["real estate agency", "real estate broker", "realtor office"],
+    "pet_services":      ["veterinary clinic", "animal hospital", "pet grooming"],
 }
 
 # ── Scoring weights ───────────────────────────────────────────────────────────

@@ -4,10 +4,11 @@
 
 Location: `aims-scanner/`
 
-Finds local service businesses in AIMS's target verticals (plumbers,
-electricians, HVAC, roofers, PI attorneys, medspas, dental, insurance,
-financial advisors), crawls their websites, and scores each one for fit
-and warmth so outreach can be prioritized by who's most likely to convert.
+Finds local service businesses in AIMS's target verticals (contractors,
+electricians, roofers, plumbers, HVAC, landscaping, physicians, dental,
+medspas, attorneys, insurance, financial advisors, real estate, pet
+services), crawls their websites, and scores each one for fit and
+warmth so outreach can be prioritized by who's most likely to convert.
 
 ### One-time setup
 
@@ -51,9 +52,10 @@ Limit results per keyword (useful for a quick test):
 python run_pipeline.py --vertical plumber --location "Miami FL" --limit 5
 ```
 
-Vertical keys: `plumber`, `electrician`, `hvac`, `roofer`, `pi_attorney`,
-`medspa`, `dental`, `insurance_agency`, `financial_advisor` (edit `config.py`
-to add more).
+Vertical keys: `contractor`, `electrician`, `roofer`, `plumber`, `hvac`,
+`landscaping`, `physicians`, `dental`, `medspa`, `attorney`,
+`insurance_agency`, `financial_advisor`, `real_estate`, `pet_services`
+(edit `config.py` to add more).
 
 ### Reading the output
 
