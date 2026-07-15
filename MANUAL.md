@@ -152,6 +152,7 @@ AIMS_CRM_WEBHOOK=https://<your-project-ref>.supabase.co/functions/v1/scanner-web
 cd ~/command-center/aims-scanner
 source venv/bin/activate
 ```
+*Produces:* nothing printed except `(venv)` appearing at the front of your prompt — that's confirmation the virtual environment is active. Required before any `python run_pipeline.py` command will find its installed packages.
 
 **Running scans:**
 ```bash
@@ -159,36 +160,41 @@ python run_pipeline.py --vertical plumber --location "Miami FL"
 python run_pipeline.py --all-verticals --location "Miami FL"
 python run_pipeline.py --all-verticals --location "Miami FL" --limit 5   # quick test
 ```
+*Produces:* a new timestamped folder under `output/` (e.g. `output/2026-07-15_0930/`) containing one `_targets.csv`, one `_crawled.csv`, and one `_scored.csv` per vertical scanned. `--vertical` scans one industry; `--all-verticals` scans all 9; `--limit` caps how many businesses per keyword (default 100) — use a small limit like 5 to test quickly without burning API budget.
 
 **Finding results:**
 ```bash
 ls -t output/ | head -1              # newest run folder
 ls output/<timestamp>/               # files inside it
 ```
+*Produces:* the first command prints just the name of your most recent run's folder. The second lists every CSV file inside a given run so you know what's available to view.
 
 **Viewing a CSV in the terminal:**
 ```bash
 cat output/<timestamp>/<file>.csv | column -s, -t | less -S
 # in less: right arrow scrolls sideways, q quits
 ```
+*Produces:* the CSV displayed as aligned columns in your terminal, one page at a time, instead of a raw comma-separated wall of text.
 
 **Combining all verticals from one run into one file:**
 ```bash
 head -1 output/<timestamp>/hvac_<city>_scored.csv > output/<timestamp>/all_leads.csv
 for f in output/<timestamp>/*_scored.csv; do tail -n +2 "$f"; done >> output/<timestamp>/all_leads.csv
 ```
+*Produces:* `all_leads.csv` — every business from every vertical scanned in that run (Tier 1, Tier 2, Tier 3, and Discards) merged into one spreadsheet with a single header row.
 
 **Filtering to just hot leads (Tier 1/2 only):**
 ```bash
 head -1 output/<timestamp>/hvac_<city>_scored.csv > output/<timestamp>/hot_leads.csv
 for f in output/<timestamp>/*_scored.csv; do awk -F',' 'NR>1 && ($1 ~ /Tier 1|Tier 2/)' "$f"; done >> output/<timestamp>/hot_leads.csv
 ```
+*Produces:* `hot_leads.csv` — only the businesses tagged Tier 1 ("Call Now") or Tier 2 ("Call Soon") across every vertical in that run, skipping Tier 3/Discard. This is the actual calling list.
 
 **Getting a file to a Windows computer** (run from PowerShell on the Windows machine, not the Ubuntu terminal):
 ```powershell
 scp meghan@<server-ip>:~/command-center/aims-scanner/output/<timestamp>/<file>.csv C:\Users\<you>\OneDrive\Desktop\<file>.csv
 ```
-Check `OneDrive\Desktop` vs plain `Desktop` first with `Test-Path` — OneDrive commonly redirects the real Desktop folder.
+*Produces:* a copy of that CSV file physically downloaded onto the Windows machine's Desktop, ready to double-click and open in Excel. Check `OneDrive\Desktop` vs plain `Desktop` first with `Test-Path` — OneDrive commonly redirects the real Desktop folder.
 
 **Managing the scheduled cron job:**
 ```bash
@@ -196,8 +202,10 @@ crontab -l      # view current schedule
 crontab -e      # edit it
 crontab -r      # remove all scheduled jobs (careful — deletes everything)
 ```
+*Produces:* `-l` prints your current scheduled job(s) as plain text, unchanged. `-e` opens the schedule in an editor so you can add/change/remove lines. `-r` wipes out all scheduled jobs immediately with no confirmation and no undo.
 
 **Checking the last automated run:**
 ```bash
 cat ~/command-center/aims-scanner/logs/pipeline.log
 ```
+*Produces:* the full printed output from the most recent cron-triggered run (or the accumulated output from every run so far, since it appends) — use this to confirm a scheduled run actually completed or to see what error stopped it.
