@@ -1,0 +1,28 @@
+# systemd unit for the Twilio <-> Deepgram voice-agent bridge.
+#
+# Install:
+#   sudo cp voice-agent.service /etc/systemd/system/voice-agent.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now voice-agent
+#
+# Logs:
+#   journalctl -u voice-agent -f
+
+[Unit]
+Description=AIMS voice-agent (Twilio Media Streams <-> Deepgram Voice Agent bridge)
+After=network.target
+
+[Service]
+Type=simple
+User=meghan
+WorkingDirectory=/home/meghan/command-center/voice-agent
+EnvironmentFile=/home/meghan/command-center/voice-agent/.env
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=3
+# Bump if calls start dropping under load; each active call holds one Twilio
+# WebSocket + one Deepgram WebSocket open for the duration of the call.
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
