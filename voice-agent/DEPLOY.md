@@ -13,7 +13,14 @@ for every active call.
 git clone https://github.com/MeGaAI333/command-center.git
 cd command-center/voice-agent
 
-# 2. Install deps (Node >= 18 required)
+# 2. Node >= 22 required — @supabase/supabase-js's realtime client needs
+#    the native WebSocket global that only Node 22+ provides, even though
+#    this service never uses realtime subscriptions itself. Check first:
+node -v
+#    If it's below 22, install a current LTS via NodeSource:
+#    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+#    sudo apt-get install -y nodejs
+
 npm ci --omit=dev
 
 # 3. Configure
