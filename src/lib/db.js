@@ -204,21 +204,6 @@ export async function getOrgSettings(orgId) {
   return data || null;
 }
 
-export async function updateAgentVoice(orgId, agentId, voiceId) {
-  const current = await getOrgSettings(orgId);
-  const agent_voices = { ...(current?.agent_voices || {}), [agentId]: voiceId };
-  const { data, error } = await supabase.from("org_settings")
-    .upsert({ org_id: orgId, agent_voices, updated_at: new Date().toISOString() }, { onConflict: "org_id" })
-    .select().single();
-  if (error) throw error;
-  return data;
-}
-
-export async function getAgentVoice(orgId, agentId) {
-  const settings = await getOrgSettings(orgId);
-  return settings?.agent_voices?.[agentId] || null;
-}
-
 // ── COMMUNICATION LOGS ─────────────────────────────────────────────────────
 export async function logCommunication(log) {
   const orgId = await getOrgId();

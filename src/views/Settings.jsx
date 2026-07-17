@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { C, AGENTS, THEMES } from "../data.js";
 import { AgentAvatar, Badge } from "../components/utils.jsx";
 import { supabase } from "../lib/supabase.js";
-import { getOrgSettings, updateAgentVoice } from "../lib/db.js";
 import { useTheme } from "../App.jsx";
 
 const ROLE_LABEL = { admin: "Admin", client: "Client", lyric: "LYRIC Client", user: "User" };
@@ -95,128 +94,6 @@ function InvitePanel({ currentColors }) {
         style={{ padding:"10px 24px", borderRadius:8, border:"none", background:!email.trim()||status==="sending" ? currentColors.border : currentColors.primary, color:!email.trim()||status==="sending" ? currentColors.textMuted : "#fff", fontSize:13, fontWeight:700, cursor:!email.trim()||status==="sending"?"not-allowed":"pointer" }}>
         {status === "sending" ? "Sending…" : "Send Invite →"}
       </button>
-    </div>
-  );
-}
-
-function VoicePicker({ orgId, agentId, currentColors }) {
-  const [voices, setVoices] = useState([]);
-  const [selectedVoice, setSelectedVoice] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [searching, setSearching] = useState("");
-  const [previewPlaying, setPreviewPlaying] = useState(null);
-  const [showPicker, setShowPicker] = useState(false);
-
-  useEffect(() => {
-    if (showPicker && !voices.length) loadVoices();
-  }, [showPicker]);
-
-  useEffect(() => {
-    if (orgId && agentId) loadSelectedVoice();
-  }, [orgId, agentId]);
-
-  const loadVoices = async () => {
-    setLoading(true);
-    try {
-      const res = await supabase.functions.invoke("bland-voices");
-      setVoices(res.data?.voices || []);
-    } catch (e) {
-      console.error("Failed to load voices:", e);
-    }
-    setLoading(false);
-  };
-
-  const loadSelectedVoice = async () => {
-    const settings = await getOrgSettings(orgId);
-    const voiceId = settings?.agent_voices?.[agentId];
-    if (voiceId) {
-      const voice = voices.find(v => v.id === voiceId) || { id: voiceId, name: voiceId };
-      setSelectedVoice(voice);
-    }
-  };
-
-  const playPreview = async (voiceId) => {
-    if (previewPlaying === voiceId) return;
-    setPreviewPlaying(voiceId);
-    try {
-      const res = await supabase.functions.invoke("bland-speak", {
-        body: { voice_id: voiceId, text: `Hi, this is ${AGENTS.find(a => a.id === agentId)?.name}, thanks for taking my call.` },
-      });
-      if (res.data?.audio_url) {
-        const audio = new Audio(res.data.audio_url);
-        audio.onended = () => setPreviewPlaying(null);
-        audio.play();
-      }
-    } catch (e) {
-      console.error("Failed to play preview:", e);
-      setPreviewPlaying(null);
-    }
-  };
-
-  const selectVoice = async (voice) => {
-    if (!orgId) return;
-    try {
-      await updateAgentVoice(orgId, agentId, voice.id);
-      setSelectedVoice(voice);
-      setShowPicker(false);
-    } catch (e) {
-      console.error("Failed to save voice:", e);
-    }
-  };
-
-  const filtered = voices.filter(v => v.name.toLowerCase().includes(searching.toLowerCase()));
-
-  const agent = AGENTS.find(a => a.id === agentId);
-  return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 14px", borderRadius:8, background:currentColors.surface, border:`1px solid ${agent?.color}30`, marginBottom:10 }}>
-      <div style={{ flex:1 }}>
-        <div style={{ fontSize:13, fontWeight:700, color:agent?.color }}>{agent?.name}</div>
-        <div style={{ fontSize:11, color:currentColors.textSecondary }}>{selectedVoice?.name || "Default voice"}</div>
-      </div>
-      <div style={{ display:"flex", gap:8 }}>
-        {selectedVoice && (
-          <button onClick={() => playPreview(selectedVoice.id)}
-            style={{ padding:"6px 12px", borderRadius:6, border:`1px solid ${C.green}`, background:"transparent", color:C.green, fontSize:11, fontWeight:700, cursor:"pointer" }}>
-            ▶ Preview
-          </button>
-        )}
-        <button onClick={() => setShowPicker(true)}
-          style={{ padding:"6px 12px", borderRadius:6, border:`1px solid ${agent?.color}`, background:"transparent", color:agent?.color, fontSize:11, fontWeight:700, cursor:"pointer" }}>
-          {selectedVoice ? "Change" : "Choose Voice"}
-        </button>
-      </div>
-
-      {showPicker && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
-          <div style={{ width:500, maxHeight:"80vh", background:currentColors.card, border:`1px solid ${currentColors.border}`, borderRadius:14, padding:24, overflowY:"auto" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:currentColors.textPrimary }}>Choose Voice for {agent?.name}</h3>
-              <button onClick={() => setShowPicker(false)} style={{ background:"transparent", border:"none", color:currentColors.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
-            </div>
-            <input value={searching} onChange={e => setSearching(e.target.value)} placeholder="Search voices…"
-              style={{ width:"100%", padding:"9px 12px", borderRadius:8, background:currentColors.surface, border:`1px solid ${currentColors.border}`, color:currentColors.textPrimary, fontSize:13, outline:"none", marginBottom:16, boxSizing:"border-box" }} />
-            {loading && <div style={{ textAlign:"center", fontSize:12, color:currentColors.textMuted, padding:24 }}>Loading voices…</div>}
-            {!loading && (
-              <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:8 }}>
-                {filtered.map(v => (
-                  <div key={v.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:8, background:currentColors.surface, border:`1px solid ${selectedVoice?.id === v.id ? agent?.color : currentColors.border}`, cursor:"pointer" }}
-                    onClick={() => selectVoice(v)}>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontSize:12, fontWeight:600, color:currentColors.textPrimary }}>{v.name}</div>
-                      <div style={{ fontSize:10, color:currentColors.textSecondary }}>{v.category || "Voice"}</div>
-                    </div>
-                    <button onClick={(e) => { e.stopPropagation(); playPreview(v.id); }}
-                      style={{ padding:"4px 8px", borderRadius:6, border:`1px solid ${currentColors.textMuted}`, background:"transparent", color:currentColors.textMuted, fontSize:10, fontWeight:700, cursor:"pointer" }}>
-                      {previewPlaying === v.id ? "Playing…" : "▶"}
-                    </button>
-                    {selectedVoice?.id === v.id && <div style={{ fontSize:16, color:agent?.color }}>✓</div>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -409,19 +286,6 @@ export default function Settings({ role, userEmail, orgId, theme, onThemeToggle,
 
       {/* Buffer Integration — admin only */}
       {role === "admin" && orgId && <BufferSettings orgId={orgId} currentColors={currentColors} />}
-
-      {/* Agent Voices — admin only */}
-      {role === "admin" && orgId && (
-        <div style={{ background:currentColors.card, border:`1px solid ${currentColors.border}`, borderRadius:12, padding:24, marginBottom:20 }}>
-          <h3 style={{ margin:"0 0 6px", fontSize:14, fontWeight:700, color:currentColors.textPrimary }}>Agent Voices</h3>
-          <p style={{ margin:"0 0 16px", fontSize:12, color:currentColors.textSecondary }}>Choose a voice for each agent on outbound calls. Browse the catalog, preview the voice, and assign it here.</p>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {AGENTS.map(a => (
-              <VoicePicker key={a.id} orgId={orgId} agentId={a.id} currentColors={currentColors} />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Agent Info — admin only */}
       {role === "admin" && (

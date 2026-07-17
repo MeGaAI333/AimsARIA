@@ -1,7 +1,7 @@
 {
   "name": "aims-voice-agent",
   "version": "1.0.0",
-  "description": "Real-time AI voice calling: Twilio Media Streams <-> Deepgram STT <-> Claude <-> ElevenLabs TTS",
+  "description": "Real-time AI voice calling: bridges Twilio Media Streams to Deepgram's Voice Agent API (STT + Claude + TTS in one connection)",
   "main": "server.js",
   "type": "commonjs",
   "engines": {

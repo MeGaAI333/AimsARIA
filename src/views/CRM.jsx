@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { C, AGENTS } from "../data.js";
 import { AgentAvatar, Badge, Btn, SectionHeader } from "../components/utils.jsx";
-import { getContacts, addContact, updateContact, deleteContact, getNotes, addNote, getAgentVoice, logCommunication, getCommunicationHistory, getAllCommunications, updateCommunicationStatus } from "../lib/db.js";
+import { getContacts, addContact, updateContact, deleteContact, getNotes, addNote, logCommunication, getCommunicationHistory, getAllCommunications, updateCommunicationStatus } from "../lib/db.js";
 import { supabase } from "../lib/supabase.js";
 
 const STAGE_COLOR = { cold:C.textSecondary, contacted:"#00B4FF", qualified:C.primary, negotiating:C.amber, won:C.green, lost:C.red };
@@ -54,10 +54,6 @@ function BulkCampaignModal({ contacts, orgId, onClose, onSent }) {
         const c = validContacts[i];
         try {
           const a = AGENTS.find(ag => ag.id === c.assigned_to);
-          let voiceId = null;
-          if (action === "call" && orgId) {
-            voiceId = await getAgentVoice(orgId, c.assigned_to);
-          }
 
           const payload = {
             contact_id: c.id,
@@ -67,7 +63,6 @@ function BulkCampaignModal({ contacts, orgId, onClose, onSent }) {
             agent_id: c.assigned_to,
             action,
             message: message.trim(),
-            voice_id: voiceId,
           };
 
           const res = await supabase.functions.invoke("send-outreach", { body: payload });
@@ -413,11 +408,6 @@ function ComposeModal({ contact, orgId, onClose, onSent }) {
     if (!message.trim() || !contact.phone && action === "call") return;
     setSending(true);
     try {
-      let voiceId = null;
-      if (action === "call" && orgId) {
-        voiceId = await getAgentVoice(orgId, contact.assigned_to);
-      }
-
       const payload = {
         contact_id: contact.id,
         contact_name: contact.name,
@@ -426,7 +416,6 @@ function ComposeModal({ contact, orgId, onClose, onSent }) {
         agent_id: contact.assigned_to,
         action,
         message: message.trim(),
-        voice_id: voiceId,
         created_at: new Date().toISOString(),
       };
 
