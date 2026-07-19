@@ -1,0 +1,913 @@
+import { useState, useEffect } from "react";
+import { C, AGENTS } from "../data.js";
+import { AgentAvatar, Badge, Btn, SectionHeader } from "../components/utils.jsx";
+import { getContacts, addContact, updateContact, deleteContact, getNotes, addNote, logCommunication, getCommunicationHistory, getAllCommunications, updateCommunicationStatus } from "../lib/db.js";
+import { supabase } from "../lib/supabase.js";
+
+const STAGE_COLOR = { cold:C.textSecondary, contacted:"#00B4FF", qualified:C.primary, negotiating:C.amber, won:C.green, lost:C.red };
+const STAGES = ["cold","contacted","qualified","negotiating","won","lost"];
+
+function timeAgo(ts) {
+  if (!ts) return "—";
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 2) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+const TEMPLATES = {
+  call: [
+    "Hi {{name}}, this is {{agent}} from AIMS. I wanted to follow up on {{company}}. Do you have a few minutes?",
+    "Hi {{name}}, I'm calling about the services we discussed for {{company}}. Are you available to chat?",
+    "Hi {{name}}, just checking in to see how things are going. Call me back when you get a chance!",
+  ],
+  text: [
+    "Hi {{name}}, AIMS here! Quick question about {{company}} – got 2 mins?",
+    "{{name}}, following up on our convo. Interested in learning more? Reply YES",
+    "Hi! Just wanted to touch base about {{company}}. Free for a quick call?",
+  ],
+  email: [
+    "Hi {{name}},\n\nHope this email finds you well! I wanted to follow up on {{company}}.\n\nBest regards,\nAIMS Team",
+    "Hi {{name}},\n\nJust checking in on the services we discussed for {{company}}. Happy to answer any questions!\n\nBest,\nAIMS",
+    "Hi {{name}},\n\nWould love to connect about {{company}} when you have a moment.\n\nLooking forward to hearing from you!",
+  ],
+};
+
+function BulkCampaignModal({ contacts, orgId, onClose, onSent }) {
+  const [action, setAction] = useState("call");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const validContacts = action === "call" ? contacts.filter(c => c.phone) :
+                        action === "text" ? contacts.filter(c => c.phone) :
+                        contacts.filter(c => c.email);
+
+  const sendBulk = async () => {
+    if (!message.trim() || validContacts.length === 0) return;
+    setSending(true);
+    try {
+      const results = [];
+      for (let i = 0; i < validContacts.length; i++) {
+        const c = validContacts[i];
+        try {
+          const a = AGENTS.find(ag => ag.id === c.assigned_to);
+
+          const payload = {
+            contact_id: c.id,
+            contact_name: c.name,
+            contact_phone: c.phone,
+            contact_email: c.email,
+            agent_id: c.assigned_to,
+            action,
+            message: message.trim(),
+          };
+
+          const res = await supabase.functions.invoke("send-outreach", { body: payload });
+          if (!res.error) {
+            const log = await logCommunication({
+              contact_id: c.id,
+              contact_name: c.name,
+              contact_phone: c.phone,
+              contact_email: c.email,
+              agent_id: c.assigned_to,
+              channel: action,
+              message: message.trim(),
+              status: "sent",
+              external_id: res.data?.call_id || res.data?.message_id || res.data?.email_id,
+            });
+            results.push(log);
+          }
+        } catch (e) {
+          console.error(`Failed for ${c.name}:`, e);
+        }
+        setProgress(i + 1);
+      }
+      if (onSent) onSent(results);
+      onClose();
+    } catch (e) {
+      console.error("Bulk send failed:", e);
+      alert(`Error: ${e.message}`);
+    }
+    setSending(false);
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ width:520, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28, maxHeight:"85vh", overflowY:"auto" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Bulk Campaign</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+
+        <div style={{ marginBottom:20, padding:14, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8 }}>
+          <div style={{ fontSize:12, fontWeight:700, color:C.textMuted, marginBottom:8 }}>TARGET CONTACTS</div>
+          <div style={{ fontSize:13, color:C.textPrimary, fontWeight:600, marginBottom:4 }}>{validContacts.length} contacts</div>
+          <div style={{ fontSize:11, color:C.textSecondary }}>
+            {action === "call" && `${validContacts.length} have phone numbers`}
+            {action === "text" && `${validContacts.length} have phone numbers`}
+            {action === "email" && `${validContacts.length} have emails`}
+          </div>
+        </div>
+
+        <div style={{ marginBottom:20 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Channel</label>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+            {[
+              { value:"call", icon:"☎️", label:"Call" },
+              { value:"text", icon:"💬", label:"Text" },
+              { value:"email", icon:"📧", label:"Email" },
+            ].map(ch => (
+              <button key={ch.value} onClick={() => setAction(ch.value)}
+                style={{ padding:"12px 14px", borderRadius:10, border:`2px solid ${action===ch.value?C.primary:C.border}`, background:action===ch.value?`${C.primary}12`:"transparent", cursor:"pointer", textAlign:"center" }}>
+                <div style={{ fontSize:18, marginBottom:4 }}>{ch.icon}</div>
+                <div style={{ fontSize:11, fontWeight:700, color:action===ch.value?C.primary:C.textPrimary }}>{ch.label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom:16 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:6 }}>Message</label>
+          <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Message for all contacts…" rows={4}
+            style={{ width:"100%", padding:12, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.textPrimary, fontSize:13, fontFamily:"inherit", resize:"none", outline:"none", boxSizing:"border-box" }} />
+        </div>
+
+        {sending && (
+          <div style={{ marginBottom:16, padding:12, background:C.surface, borderRadius:8 }}>
+            <div style={{ fontSize:12, color:C.textSecondary, marginBottom:8 }}>Sending to {validContacts.length} contacts…</div>
+            <div style={{ width:"100%", height:4, background:C.border, borderRadius:20, overflow:"hidden" }}>
+              <div style={{ height:"100%", background:C.green, width:`${(progress/validContacts.length)*100}%`, transition:"width 0.3s" }} />
+            </div>
+            <div style={{ fontSize:10, color:C.textMuted, marginTop:6 }}>{progress} / {validContacts.length} sent</div>
+          </div>
+        )}
+
+        <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+          <button onClick={onClose} disabled={sending} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer", opacity:sending?0.6:1 }}>Cancel</button>
+          <button onClick={sendBulk} disabled={sending || !message.trim() || validContacts.length === 0}
+            style={{ padding:"9px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", opacity:sending || !message.trim() ? 0.6 : 1 }}>
+            {sending ? `Sending… ${progress}/${validContacts.length}` : `Send to ${validContacts.length}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function parseCSV(text) {
+  const lines = text.split("\n").filter(l => l.trim());
+  if (lines.length < 2) return [];
+
+  // Parse headers, handling spaces and normalizing to snake_case
+  const rawHeaders = lines[0].split(",").map(h => h.trim());
+  const headers = rawHeaders.map(h =>
+    h.toLowerCase()
+      .replace(/\s+/g, "_")  // convert spaces to underscores
+      .replace(/[^a-z0-9_]/g, "")  // remove special chars
+  );
+
+  const rows = lines.slice(1).map((line, lineIdx) => {
+    // Split by comma but handle quoted fields
+    const values = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === "," && !inQuotes) {
+        values.push(current.trim().replace(/^"|"$/g, ""));
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    values.push(current.trim().replace(/^"|"$/g, ""));
+
+    const row = {};
+    headers.forEach((h, i) => {
+      if (h) row[h] = values[i] || "";
+    });
+
+    return row;
+  });
+
+  return rows;
+}
+
+function ImportModal({ onClose, onImport }) {
+  const [fileContent, setFileContent] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [results, setResults] = useState(null);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setFileContent(event.target?.result || "");
+    };
+    reader.readAsText(file);
+  };
+
+  const doImport = async () => {
+    if (!fileContent.trim()) return;
+    setImporting(true);
+    try {
+      const rows = parseCSV(fileContent);
+      const imported = [];
+      const errors = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        try {
+          const row = rows[i];
+          const contact = {
+            name: row.name || row.contact_name || `Lead ${i + 1}`,
+            company: row.company || row.company_name || "",
+            email: row.email || "",
+            phone: row.phone || "",
+            industry: row.industry || "",
+            stage: row.stage || "cold",
+            value: Number(row.value || row.deal_value || 0) || 0,
+            score: Number(row.score || 50) || 50,
+            source: row.source || "import",
+            assigned_to: row.assigned_to || row.agent || "aria",
+            tags: [],
+            last_contact: new Date().toISOString(),
+          };
+
+          if (!contact.name.trim()) {
+            errors.push({ row: i + 2, error: "Missing name" });
+            continue;
+          }
+
+          const created = await addContact(contact);
+          imported.push(created);
+        } catch (e) {
+          errors.push({ row: i + 2, error: e.message });
+        }
+        setProgress(i + 1);
+      }
+
+      setResults({ imported: imported.length, errors, total: rows.length });
+    } catch (e) {
+      console.error("Import failed:", e);
+      setResults({ imported: 0, errors: [{ error: e.message }], total: 0 });
+    }
+    setImporting(false);
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ width:540, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28, maxHeight:"85vh", overflowY:"auto" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Import Leads from CSV</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+
+        {!results ? (
+          <>
+            <div style={{ marginBottom:20, padding:16, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:C.textMuted, marginBottom:12, textTransform:"uppercase" }}>Expected Columns</div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, fontSize:11, color:C.textSecondary }}>
+                <span>✓ name (required)</span>
+                <span>company</span>
+                <span>email</span>
+                <span>phone</span>
+                <span>industry</span>
+                <span>stage (cold/contacted/etc)</span>
+                <span>value ($)</span>
+                <span>score (1-100)</span>
+                <span>source</span>
+                <span>assigned_to (agent id)</span>
+              </div>
+            </div>
+
+            <div style={{ marginBottom:20 }}>
+              <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Upload CSV or Paste Data</label>
+              <div style={{ display:"flex", gap:10, marginBottom:12 }}>
+                <input type="file" accept=".csv" onChange={handleFileChange}
+                  style={{ flex:1, padding:"8px 12px", borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:12, cursor:"pointer" }} />
+              </div>
+              <textarea value={fileContent} onChange={e => setFileContent(e.target.value)} placeholder="Or paste CSV data here (columns: name, company, email, phone, etc.)" rows={6}
+                style={{ width:"100%", padding:12, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.textPrimary, fontSize:12, fontFamily:"monospace", resize:"none", outline:"none", boxSizing:"border-box" }} />
+            </div>
+
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={onClose} disabled={importing} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>Cancel</button>
+              <button onClick={doImport} disabled={importing || !fileContent.trim()}
+                style={{ padding:"9px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", opacity:importing || !fileContent.trim() ? 0.6 : 1 }}>
+                {importing ? "Importing…" : "Import"}
+              </button>
+            </div>
+
+            {importing && (
+              <div style={{ marginTop:16, padding:12, background:C.surface, borderRadius:8 }}>
+                <div style={{ fontSize:12, color:C.textSecondary, marginBottom:8 }}>Processing CSV…</div>
+                <div style={{ width:"100%", height:4, background:C.border, borderRadius:20, overflow:"hidden" }}>
+                  <div style={{ height:"100%", background:C.primary, width:`${(progress / (fileContent.split("\n").length - 1)) * 100}%`, transition:"width 0.3s" }} />
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div style={{ marginBottom:20, padding:16, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary, marginBottom:12 }}>Import Results</div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+                <span style={{ color:C.green }}>✓ {results.imported} imported</span>
+                <span style={{ color:C.red }}>{results.errors.length} errors</span>
+              </div>
+              {results.errors.length > 0 && (
+                <div style={{ fontSize:11, color:C.textSecondary, maxHeight:150, overflowY:"auto" }}>
+                  {results.errors.slice(0, 10).map((err, i) => (
+                    <div key={i} style={{ padding:"4px 0", borderBottom:`1px solid ${C.border}` }}>
+                      {err.row ? `Row ${err.row}: ` : ""}{err.error}
+                    </div>
+                  ))}
+                  {results.errors.length > 10 && <div style={{ padding:"4px 0", color:C.textMuted }}>…and {results.errors.length - 10} more</div>}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={() => {
+                onImport(results.imported);
+                onClose();
+              }}
+                style={{ padding:"9px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                Done
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function exportToCSV(contacts, communications) {
+  const contactsWithStats = contacts.map(c => {
+    const comms = communications.filter(cm => cm.contact_id === c.id);
+    const calls = comms.filter(cm => cm.channel === "call").length;
+    const texts = comms.filter(cm => cm.channel === "text").length;
+    const emails = comms.filter(cm => cm.channel === "email").length;
+    return {
+      Name: c.name,
+      Company: c.company,
+      Email: c.email,
+      Phone: c.phone,
+      Industry: c.industry,
+      Stage: c.stage,
+      Value: c.value,
+      Score: c.score,
+      Calls: calls,
+      Texts: texts,
+      Emails: emails,
+      "Created Date": new Date(c.created_at).toLocaleDateString(),
+    };
+  });
+
+  const headers = Object.keys(contactsWithStats[0] || {});
+  const rows = contactsWithStats.map(c => headers.map(h => c[h]));
+
+  const csv = [headers, ...rows].map(row => row.map(v => `"${v || ""}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `contacts-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function ComposeModal({ contact, orgId, onClose, onSent }) {
+  const [action, setAction] = useState("call"); // call | text | email
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const a = AGENTS.find(ag => ag.id === contact.assigned_to);
+
+  const applyTemplate = (template) => {
+    const filled = template
+      .replace(/{{name}}/g, contact.name.split(" ")[0])
+      .replace(/{{agent}}/g, a?.name || "an agent")
+      .replace(/{{company}}/g, contact.company || "your business");
+    setMessage(filled);
+    setShowTemplates(false);
+  };
+
+  const send = async () => {
+    if (!message.trim() || !contact.phone && action === "call") return;
+    setSending(true);
+    try {
+      const payload = {
+        contact_id: contact.id,
+        contact_name: contact.name,
+        contact_phone: contact.phone,
+        contact_email: contact.email,
+        agent_id: contact.assigned_to,
+        action,
+        message: message.trim(),
+        created_at: new Date().toISOString(),
+      };
+
+      const res = await supabase.functions.invoke("send-outreach", { body: payload });
+      if (res.error) throw new Error(res.error.message);
+
+      const log = await logCommunication({
+        contact_id: contact.id,
+        contact_name: contact.name,
+        contact_phone: contact.phone,
+        contact_email: contact.email,
+        agent_id: contact.assigned_to,
+        channel: action,
+        message: message.trim(),
+        status: "sent",
+        external_id: res.data?.call_id || res.data?.message_id || res.data?.email_id || null,
+      });
+
+      if (onSent) onSent(log);
+      setMessage("");
+      onClose();
+    } catch (e) {
+      console.error("Failed to send:", e);
+      alert(`Error: ${e.message}`);
+    }
+    setSending(false);
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ width:500, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28, maxHeight:"85vh", overflowY:"auto" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>Send Message</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+
+        <div style={{ marginBottom:20 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Channel</label>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+            {[
+              { value:"call", icon:"☎️", label:"Call" },
+              { value:"text", icon:"💬", label:"Text" },
+              { value:"email", icon:"📧", label:"Email" },
+            ].map(ch => (
+              <button key={ch.value} onClick={() => setAction(ch.value)}
+                style={{ padding:"12px 14px", borderRadius:10, border:`2px solid ${action===ch.value?a?.color:C.border}`, background:action===ch.value?`${a?.color}12`:"transparent", cursor:"pointer", textAlign:"center" }}>
+                <div style={{ fontSize:18, marginBottom:4 }}>{ch.icon}</div>
+                <div style={{ fontSize:11, fontWeight:700, color:action===ch.value?a?.color:C.textPrimary }}>{ch.label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom:16 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5 }}>
+              {action === "call" ? "Call Script" : action === "text" ? "Message" : "Email Body"}
+            </label>
+            <button onClick={() => setShowTemplates(!showTemplates)}
+              style={{ fontSize:10, fontWeight:700, color:C.primary, background:"transparent", border:"none", cursor:"pointer" }}>
+              📋 Templates
+            </button>
+          </div>
+          {showTemplates && (
+            <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:6, marginBottom:10, maxHeight:150, overflowY:"auto" }}>
+              {TEMPLATES[action].map((tmpl, i) => (
+                <div key={i} onClick={() => applyTemplate(tmpl)}
+                  style={{ padding:8, background:C.surface, border:`1px solid ${C.border}`, borderRadius:6, fontSize:11, color:C.textSecondary, cursor:"pointer", lineHeight:1.4 }}>
+                  {tmpl.slice(0, 80)}…
+                </div>
+              ))}
+            </div>
+          )}
+          <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={
+            action === "call" ? "What should the AI agent say?" :
+            action === "text" ? "Text message content…" :
+            "Email message…"
+          } rows={5}
+            style={{ width:"100%", padding:12, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.textPrimary, fontSize:13, fontFamily:"inherit", resize:"none", outline:"none", boxSizing:"border-box" }} />
+        </div>
+
+        <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:14, marginBottom:16 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:C.textMuted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>Going to</div>
+          <div style={{ fontSize:13, fontWeight:600, color:C.textPrimary, marginBottom:4 }}>{contact.name}</div>
+          <div style={{ fontSize:12, color:C.textSecondary }}>
+            {action === "call" ? `☎️ ${contact.phone || "No phone"}` :
+             action === "text" ? `💬 ${contact.phone || "No phone"}` :
+             `📧 ${contact.email || "No email"}`}
+          </div>
+        </div>
+
+        <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+          <button onClick={onClose} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>Cancel</button>
+          <button onClick={send} disabled={sending || !message.trim() || (action === "call" && !contact.phone)}
+            style={{ padding:"9px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", opacity:sending || !message.trim() ? 0.6 : 1 }}>
+            {sending ? "Sending…" : "Send"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContactRow({ c, selected, onClick, communications, onDelete }) {
+  const a = AGENTS.find(ag => ag.id === c.assigned_to);
+  const recentComms = communications.filter(com => com.contact_id === c.id).slice(0, 3);
+  const lastComm = communications.find(com => com.contact_id === c.id);
+
+  return (
+    <div onClick={onClick} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", cursor:"pointer", background:selected ? C.card:"transparent", borderBottom:`1px solid ${C.border}` }}
+      onMouseEnter={e => !selected && (e.currentTarget.style.background = C.surface)}
+      onMouseLeave={e => !selected && (e.currentTarget.style.background = "transparent")}
+    >
+      <div style={{ width:36, height:36, borderRadius:"50%", background:`${a?.color||C.primary}18`, border:`2px solid ${a?.color||C.primary}40`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0, fontWeight:700, color:a?.color||C.primary }}>
+        {c.name.split(" ").map(n=>n[0]).join("").slice(0,2)}
+      </div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:13, fontWeight:600, color:C.textPrimary, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.name}</div>
+        <div style={{ fontSize:11, color:C.textSecondary, display:"flex", gap:6, alignItems:"center" }}>
+          <span>{c.company}</span>
+          {lastComm && <span style={{ color:C.textMuted }}>· {timeAgo(lastComm.created_at)}</span>}
+        </div>
+      </div>
+      <div style={{ textAlign:"right", flexShrink:0 }}>
+        <div style={{ fontSize:11, fontWeight:700, color:STAGE_COLOR[c.stage]||C.textSecondary, textTransform:"capitalize" }}>{c.stage}</div>
+        <div style={{ fontSize:10, color:C.textMuted }}>${Number(c.value||0).toLocaleString()}</div>
+        {recentComms.length > 0 && (
+          <div style={{ fontSize:10, color:C.amber, marginTop:3 }}>
+            {recentComms.map((com, i) => (
+              <span key={i}>{com.channel === "call" ? "☎️" : com.channel === "text" ? "💬" : "📧"}</span>
+            ))}
+          </div>
+        )}
+      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(c.id); }}
+        style={{ background:"transparent", border:"none", color:C.textMuted, cursor:"pointer", fontSize:14, padding:"0 4px", flexShrink:0 }}
+        title="Delete contact"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
+function ContactDetail({ contact, orgId, onClose, onStageChange }) {
+  const [activeTab, setActiveTab] = useState("overview");
+  const [notes, setNotes] = useState([]);
+  const [noteText, setNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const [showCompose, setShowCompose] = useState(false);
+  const [activity, setActivity] = useState([]);
+  const a = AGENTS.find(ag => ag.id === contact.assigned_to);
+
+  useEffect(() => {
+    getNotes().then(all => setNotes(all.filter(n => n.contact_id === contact.id)));
+    getCommunicationHistory(contact.id).then(all => setActivity(all));
+  }, [contact.id]);
+
+  const saveNote = async () => {
+    if (!noteText.trim()) return;
+    setSavingNote(true);
+    const n = await addNote({ contact_id: contact.id, contact_name: contact.name, content: noteText.trim(), author: "Advisor", role: "advisor" });
+    setNotes(prev => [n, ...prev]);
+    setNoteText("");
+    setSavingNote(false);
+  };
+
+  return (
+    <div style={{ height:"100%", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      <div style={{ padding:"20px 24px", borderBottom:`1px solid ${C.border}`, background:C.surface, flexShrink:0 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
+          <div>
+            <div style={{ fontSize:18, fontWeight:800, color:C.textPrimary }}>{contact.name}</div>
+            <div style={{ fontSize:13, color:C.textSecondary }}>{contact.company}{contact.industry ? ` · ${contact.industry}` : ""}</div>
+          </div>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <div style={{ fontSize:24, fontWeight:800, color:contact.score>=80?C.green:contact.score>=55?C.amber:C.red }}>{contact.score}</div>
+            <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
+          <select value={contact.stage} onChange={e => onStageChange(contact.id, e.target.value)}
+            style={{ padding:"3px 8px", borderRadius:6, border:`1px solid ${STAGE_COLOR[contact.stage]||C.border}`, background:C.card, color:STAGE_COLOR[contact.stage]||C.textSecondary, fontSize:11, fontWeight:700, cursor:"pointer", textTransform:"capitalize" }}>
+            {STAGES.map(s => <option key={s} value={s} style={{ textTransform:"capitalize" }}>{s}</option>)}
+          </select>
+          {(contact.tags||[]).map(t => <Badge key={t} color={C.textMuted}>{t}</Badge>)}
+          {a && <Badge color={a.color}>{a.avatar} {a.name}</Badge>}
+        </div>
+      </div>
+
+      <div style={{ display:"flex", gap:4, padding:"0 24px", borderBottom:`1px solid ${C.border}`, background:C.surface, flexShrink:0, justifyContent:"space-between", alignItems:"center" }}>
+        <div style={{ display:"flex", gap:4 }}>
+          {["overview","activity","notes"].map(t => (
+            <button key={t} onClick={() => setActiveTab(t)} style={{ padding:"10px 14px", border:"none", background:"transparent", color:activeTab===t?C.primary:C.textSecondary, fontSize:12, fontWeight:700, cursor:"pointer", borderBottom:`2px solid ${activeTab===t?C.primary:"transparent"}`, textTransform:"capitalize" }}>{t}</button>
+          ))}
+        </div>
+        <button onClick={() => setShowCompose(true)}
+          style={{ padding:"8px 14px", borderRadius:6, border:`1px solid ${a?.color}`, background:a?.color, color:"#fff", fontSize:11, fontWeight:700, cursor:"pointer", flexShrink:0 }}>
+          ☎️ Send Message
+        </button>
+      </div>
+
+      <div style={{ flex:1, overflowY:"auto", padding:"20px 24px" }}>
+        {activeTab === "overview" && (
+          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+            <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16 }}>
+              <div style={{ fontSize:11, fontWeight:800, color:C.textMuted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:12 }}>Contact Info</div>
+              {[
+                { label:"Email",   val:contact.email||"—" },
+                { label:"Phone",   val:contact.phone||"—" },
+                { label:"Source",  val:contact.source||"—" },
+                { label:"Value",   val:`$${Number(contact.value||0).toLocaleString()}` },
+                { label:"Last Contact", val:timeAgo(contact.last_contact) },
+                { label:"Added",   val:new Date(contact.created_at).toLocaleDateString() },
+              ].map(r => (
+                <div key={r.label} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:`1px solid ${C.border}` }}>
+                  <span style={{ fontSize:12, color:C.textMuted }}>{r.label}</span>
+                  <span style={{ fontSize:12, color:C.textPrimary, fontWeight:600 }}>{r.val}</span>
+                </div>
+              ))}
+            </div>
+            {a && (
+              <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16 }}>
+                <div style={{ fontSize:11, fontWeight:800, color:C.textMuted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:12 }}>Assigned Agent</div>
+                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <AgentAvatar agentId={a.id} size={40} />
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:700, color:a.color }}>{a.name}</div>
+                    <div style={{ fontSize:11, color:C.textSecondary }}>{a.role} · {a.direction}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "activity" && (
+          <div>
+            {activity.length === 0 && <div style={{ fontSize:12, color:C.textMuted, textAlign:"center", marginTop:24 }}>No activity yet.</div>}
+            {activity.map(log => {
+              const channelIcons = { call: "☎️", text: "💬", email: "📧", received: "📥" };
+              const statusColors = { sent: C.green, received: C.blue, pending: C.amber, failed: C.red, completed: C.green };
+              return (
+                <div key={log.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:14, marginBottom:10 }}>
+                  <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+                    <div style={{ fontSize:18, flex:"0 0 auto" }}>{channelIcons[log.channel]}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                        <div>
+                          <div style={{ fontSize:12, fontWeight:700, color:C.textPrimary, textTransform:"capitalize" }}>
+                            {log.channel} {log.status === "received" ? "from" : "via"} {log.agent_id.toUpperCase()}
+                          </div>
+                          <div style={{ fontSize:10, color:C.textMuted }}>{timeAgo(log.created_at)}</div>
+                        </div>
+                        <div style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"3px 10px", borderRadius:20, background:`${statusColors[log.status]}15`, border:`1px solid ${statusColors[log.status]}30` }}>
+                          <span style={{ fontSize:10, fontWeight:700, color:statusColors[log.status], textTransform:"capitalize" }}>{log.status}</span>
+                        </div>
+                      </div>
+                      <p style={{ margin:0, fontSize:12, color:C.textSecondary, lineHeight:1.6, marginBottom:8 }}>{log.message}</p>
+                      {log.external_id && log.channel === "call" && (
+                        <div style={{ fontSize:10, color:C.textMuted }}>Call ID: {log.external_id.slice(0, 8)}…</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {activeTab === "notes" && (
+          <div>
+            <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:14, marginBottom:16 }}>
+              <textarea value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Add a note…" rows={3}
+                style={{ width:"100%", padding:10, background:C.surface, border:`1px solid ${C.border}`, borderRadius:6, color:C.textPrimary, fontSize:13, fontFamily:"inherit", resize:"none", outline:"none", boxSizing:"border-box" }} />
+              <div style={{ display:"flex", justifyContent:"flex-end", marginTop:8 }}>
+                <button onClick={saveNote} disabled={savingNote}
+                  style={{ padding:"6px 16px", borderRadius:6, border:"none", background:C.primary, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                  {savingNote ? "Saving…" : "Save Note"}
+                </button>
+              </div>
+            </div>
+            {notes.length === 0 && <div style={{ fontSize:12, color:C.textMuted, textAlign:"center", marginTop:24 }}>No notes yet.</div>}
+            {notes.map(n => (
+              <div key={n.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:14, marginBottom:10, borderLeft:`3px solid ${C.amber}` }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                  <span style={{ fontSize:12, fontWeight:700, color:C.amber }}>{n.author}</span>
+                  <span style={{ fontSize:10, color:C.textMuted }}>{timeAgo(n.created_at)}</span>
+                </div>
+                <p style={{ margin:0, fontSize:12, color:C.textSecondary, lineHeight:1.6 }}>{n.content}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showCompose && (
+        <ComposeModal
+          contact={contact}
+          orgId={orgId}
+          onClose={() => setShowCompose(false)}
+          onSent={(log) => {
+            setActivity(prev => [log, ...prev]);
+            setActiveTab("activity");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function AddContactModal({ onClose, onSave }) {
+  const [form, setForm] = useState({ name:"", company:"", email:"", phone:"", industry:"", stage:"cold", value:"", source:"", assigned_to:"aria", score:50 });
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setForm(p => ({ ...p, [k]:v }));
+
+  const save = async () => {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    await onSave({ ...form, value: Number(form.value)||0, score: Number(form.score)||50, tags: [], last_contact: new Date().toISOString() });
+    setSaving(false);
+  };
+
+  const field = (label, key, type="text", placeholder="") => (
+    <div style={{ marginBottom:14 }}>
+      <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:5 }}>{label}</label>
+      <input type={type} value={form[key]} onChange={e => set(key, e.target.value)} placeholder={placeholder}
+        style={{ width:"100%", boxSizing:"border-box", padding:"9px 12px", borderRadius:7, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none" }} />
+    </div>
+  );
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+      <div style={{ width:480, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28, maxHeight:"85vh", overflowY:"auto" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>New Contact</h3>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
+          <div>{field("Name *","name","text","Full name")}</div>
+          <div>{field("Company","company","text","Company name")}</div>
+          <div>{field("Email","email","email","email@example.com")}</div>
+          <div>{field("Phone","phone","text","(555) 000-0000")}</div>
+          <div>{field("Industry","industry","text","e.g. HVAC")}</div>
+          <div>{field("Deal Value","value","number","0")}</div>
+          <div>{field("Source","source","text","e.g. Facebook Ad")}</div>
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:5 }}>Stage</label>
+            <select value={form.stage} onChange={e => set("stage", e.target.value)}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:7, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none", marginBottom:14 }}>
+              {STAGES.map(s => <option key={s} value={s} style={{ textTransform:"capitalize" }}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.textSecondary, textTransform:"uppercase", letterSpacing:0.5, marginBottom:5 }}>Assigned Agent</label>
+            <select value={form.assigned_to} onChange={e => set("assigned_to", e.target.value)}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:7, background:C.surface, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none", marginBottom:14 }}>
+              <option value="aria">ARIA</option>
+              <option value="melody">MELODY</option>
+              <option value="lyric">LYRIC</option>
+              <option value="muse">MUSE</option>
+            </select>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:8 }}>
+          <button onClick={onClose} style={{ padding:"9px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>Cancel</button>
+          <button onClick={save} disabled={saving||!form.name.trim()}
+            style={{ padding:"9px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", opacity:saving||!form.name.trim()?0.6:1 }}>
+            {saving ? "Saving…" : "Add Contact"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function CRM({ orgId }) {
+  const [contacts, setContacts] = useState([]);
+  const [communications, setCommunications] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [search, setSearch]     = useState("");
+  const [stageFilter, setStageFilter] = useState("all");
+  const [selected, setSelected] = useState(null);
+  const [showAdd, setShowAdd]   = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      getContacts().then(data => setContacts(data)),
+      getAllCommunications().catch(() => []).then(data => setCommunications(data || [])),
+    ]).then(() => setLoading(false)).catch(() => setLoading(false));
+  }, []);
+
+  const handleAddContact = async (data) => {
+    const c = await addContact(data);
+    setContacts(prev => [c, ...prev]);
+    setShowAdd(false);
+  };
+
+  const handleStageChange = async (id, stage) => {
+    await updateContact(id, { stage });
+    setContacts(prev => prev.map(c => c.id === id ? { ...c, stage } : c));
+    if (selected?.id === id) setSelected(prev => ({ ...prev, stage }));
+  };
+
+  const handleDeleteContact = async (id) => {
+    if (!confirm("Delete this contact permanently?")) return;
+    await supabase.from("contacts").delete().eq("id", id);
+    setContacts(prev => prev.filter(c => c.id !== id));
+    if (selected?.id === id) setSelected(null);
+  };
+
+  const filtered = contacts.filter(c => {
+    const q = search.toLowerCase();
+    const matchSearch = c.name.toLowerCase().includes(q) || (c.company||"").toLowerCase().includes(q);
+    const matchStage  = stageFilter === "all" || c.stage === stageFilter;
+    return matchSearch && matchStage;
+  });
+
+  return (
+    <div style={{ display:"flex", height:"100%", overflow:"hidden" }}>
+      <div style={{ width:selected?320:"100%", maxWidth:selected?320:"none", borderRight:`1px solid ${C.border}`, display:"flex", flexDirection:"column", flexShrink:0 }}>
+        <div style={{ padding:"18px 16px 12px", background:C.surface, borderBottom:`1px solid ${C.border}`, flexShrink:0 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+            <SectionHeader title="AIMS AI CRM" sub={`${contacts.length} contacts`} />
+            <button onClick={() => exportToCSV(contacts, communications)}
+              style={{ fontSize:10, fontWeight:700, color:C.primary, background:"transparent", border:"none", cursor:"pointer" }}>
+              📥 Export
+            </button>
+          </div>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search contacts…"
+            style={{ width:"100%", padding:"8px 12px", borderRadius:7, background:C.card, border:`1px solid ${C.border}`, color:C.textPrimary, fontSize:13, outline:"none", marginBottom:10, boxSizing:"border-box" }} />
+          <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+            {["all",...STAGES].map(s => (
+              <button key={s} onClick={() => setStageFilter(s)}
+                style={{ padding:"3px 10px", borderRadius:20, border:`1px solid ${stageFilter===s?(STAGE_COLOR[s]||C.primary):C.border}`, background:stageFilter===s?`${STAGE_COLOR[s]||C.primary}20`:"transparent", color:stageFilter===s?(STAGE_COLOR[s]||C.primary):C.textMuted, fontSize:10, fontWeight:700, cursor:"pointer", textTransform:"capitalize" }}>
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ flex:1, overflowY:"auto" }}>
+          {loading && <div style={{ padding:32, textAlign:"center", fontSize:12, color:C.textMuted }}>Loading…</div>}
+          {!loading && filtered.map(c => (
+            <ContactRow key={c.id} c={c} selected={selected?.id===c.id} onClick={() => setSelected(selected?.id===c.id?null:c)} communications={communications} onDelete={handleDeleteContact} />
+          ))}
+          {!loading && filtered.length===0 && (
+            <div style={{ padding:32, textAlign:"center", fontSize:12, color:C.textMuted }}>
+              {contacts.length===0 ? "No contacts yet. Add your first one!" : "No contacts match your search."}
+            </div>
+          )}
+        </div>
+        <div style={{ padding:14, borderTop:`1px solid ${C.border}`, background:C.surface, flexShrink:0, display:"flex", gap:8, flexDirection:"column" }}>
+          <button onClick={() => setShowAdd(true)} style={{ width:"100%", padding:"9px 0", borderRadius:8, border:`1px solid ${C.primary}`, background:`${C.primary}15`, color:C.primary, fontSize:13, fontWeight:700, cursor:"pointer" }}>+ Add Contact</button>
+          <button onClick={() => setShowImport(true)} style={{ width:"100%", padding:"9px 0", borderRadius:8, border:`1px solid ${C.green}`, background:`${C.green}15`, color:C.green, fontSize:13, fontWeight:700, cursor:"pointer" }}>📥 Import CSV</button>
+          {filtered.length > 0 && (
+            <button onClick={() => setShowBulk(true)} style={{ width:"100%", padding:"9px 0", borderRadius:8, border:`1px solid ${C.amber}`, background:`${C.amber}15`, color:C.amber, fontSize:13, fontWeight:700, cursor:"pointer" }}>📢 Send to {filtered.length}</button>
+          )}
+        </div>
+      </div>
+
+      {selected && (
+        <div style={{ flex:1, overflow:"hidden" }}>
+          <ContactDetail contact={selected} orgId={orgId} onClose={() => setSelected(null)} onStageChange={handleStageChange} />
+        </div>
+      )}
+
+      {showAdd && <AddContactModal onClose={() => setShowAdd(false)} onSave={handleAddContact} />}
+      {showImport && (
+        <ImportModal
+          onClose={() => setShowImport(false)}
+          onImport={(count) => {
+            getContacts().then(data => {
+              setContacts(data);
+              alert(`✓ Successfully imported ${count} lead${count !== 1 ? 's' : ''}!`);
+            });
+          }}
+        />
+      )}
+      {showBulk && (
+        <BulkCampaignModal
+          contacts={filtered}
+          orgId={orgId}
+          onClose={() => setShowBulk(false)}
+          onSent={(logs) => {
+            setCommunications(prev => [...logs, ...prev]);
+            setShowBulk(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
