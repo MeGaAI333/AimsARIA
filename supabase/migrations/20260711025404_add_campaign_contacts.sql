@@ -14,16 +14,19 @@ create table if not exists campaign_contacts (
 
 alter table campaign_contacts enable row level security;
 
+drop policy if exists "org members can view campaign_contacts" on campaign_contacts;
 create policy "org members can view campaign_contacts" on campaign_contacts
   for select using (
     campaign_id in (select id from campaigns where org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()))
   );
 
+drop policy if exists "org members can insert campaign_contacts" on campaign_contacts;
 create policy "org members can insert campaign_contacts" on campaign_contacts
   for insert with check (
     campaign_id in (select id from campaigns where org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()))
   );
 
+drop policy if exists "org members can update campaign_contacts" on campaign_contacts;
 create policy "org members can update campaign_contacts" on campaign_contacts
   for update using (
     campaign_id in (select id from campaigns where org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()))
@@ -47,6 +50,7 @@ create table if not exists call_recordings (
 
 alter table call_recordings enable row level security;
 
+drop policy if exists "org members can view call_recordings" on call_recordings;
 create policy "org members can view call_recordings" on call_recordings
   for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 

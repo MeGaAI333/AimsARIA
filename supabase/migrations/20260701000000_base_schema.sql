@@ -25,6 +25,7 @@ create table if not exists organizations (
 
 alter table organizations enable row level security;
 
+drop policy if exists "org members can view their own org" on organizations;
 create policy "org members can view their own org" on organizations
   for select using (
     id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid())
@@ -59,12 +60,16 @@ create table if not exists contacts (
 
 alter table contacts enable row level security;
 
+drop policy if exists "org members can view contacts" on contacts;
 create policy "org members can view contacts" on contacts
   for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can insert contacts" on contacts;
 create policy "org members can insert contacts" on contacts
   for insert with check (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can update contacts" on contacts;
 create policy "org members can update contacts" on contacts
   for update using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can delete contacts" on contacts;
 create policy "org members can delete contacts" on contacts
   for delete using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
@@ -83,12 +88,16 @@ create table if not exists tasks (
 
 alter table tasks enable row level security;
 
+drop policy if exists "org members can view tasks" on tasks;
 create policy "org members can view tasks" on tasks
   for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can insert tasks" on tasks;
 create policy "org members can insert tasks" on tasks
   for insert with check (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can update tasks" on tasks;
 create policy "org members can update tasks" on tasks
   for update using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can delete tasks" on tasks;
 create policy "org members can delete tasks" on tasks
   for delete using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
@@ -104,10 +113,13 @@ create table if not exists notes (
 
 alter table notes enable row level security;
 
+drop policy if exists "org members can view notes" on notes;
 create policy "org members can view notes" on notes
   for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can insert notes" on notes;
 create policy "org members can insert notes" on notes
   for insert with check (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can delete notes" on notes;
 create policy "org members can delete notes" on notes
   for delete using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
@@ -126,10 +138,13 @@ create table if not exists events (
 
 alter table events enable row level security;
 
+drop policy if exists "org members can view events" on events;
 create policy "org members can view events" on events
   for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can insert events" on events;
 create policy "org members can insert events" on events
   for insert with check (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can delete events" on events;
 create policy "org members can delete events" on events
   for delete using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
@@ -151,10 +166,13 @@ create table if not exists conversations (
 
 alter table conversations enable row level security;
 
+drop policy if exists "org members can view conversations" on conversations;
 create policy "org members can view conversations" on conversations
   for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can insert conversations" on conversations;
 create policy "org members can insert conversations" on conversations
   for insert with check (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can update conversations" on conversations;
 create policy "org members can update conversations" on conversations
   for update using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
@@ -179,10 +197,13 @@ create table if not exists communication_logs (
 
 alter table communication_logs enable row level security;
 
+drop policy if exists "org members can view communication_logs" on communication_logs;
 create policy "org members can view communication_logs" on communication_logs
   for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can insert communication_logs" on communication_logs;
 create policy "org members can insert communication_logs" on communication_logs
   for insert with check (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can update communication_logs" on communication_logs;
 create policy "org members can update communication_logs" on communication_logs
   for update using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
@@ -205,12 +226,16 @@ create table if not exists campaigns (
 
 alter table campaigns enable row level security;
 
+drop policy if exists "org members can view campaigns" on campaigns;
 create policy "org members can view campaigns" on campaigns
   for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can insert campaigns" on campaigns;
 create policy "org members can insert campaigns" on campaigns
   for insert with check (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can update campaigns" on campaigns;
 create policy "org members can update campaigns" on campaigns
   for update using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can delete campaigns" on campaigns;
 create policy "org members can delete campaigns" on campaigns
   for delete using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
@@ -240,12 +265,16 @@ create table if not exists lyric_posts (
 
 alter table lyric_posts enable row level security;
 
+drop policy if exists "org members can view lyric_posts" on lyric_posts;
 create policy "org members can view lyric_posts" on lyric_posts
   for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can insert lyric_posts" on lyric_posts;
 create policy "org members can insert lyric_posts" on lyric_posts
   for insert with check (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can update lyric_posts" on lyric_posts;
 create policy "org members can update lyric_posts" on lyric_posts
   for update using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can delete lyric_posts" on lyric_posts;
 create policy "org members can delete lyric_posts" on lyric_posts
   for delete using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
@@ -263,12 +292,16 @@ create table if not exists schedule_rules (
 
 alter table schedule_rules enable row level security;
 
+drop policy if exists "org members can view schedule_rules" on schedule_rules;
 create policy "org members can view schedule_rules" on schedule_rules
   for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can insert schedule_rules" on schedule_rules;
 create policy "org members can insert schedule_rules" on schedule_rules
   for insert with check (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can update schedule_rules" on schedule_rules;
 create policy "org members can update schedule_rules" on schedule_rules
   for update using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can delete schedule_rules" on schedule_rules;
 create policy "org members can delete schedule_rules" on schedule_rules
   for delete using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
@@ -293,10 +326,13 @@ create table if not exists org_settings (
 
 alter table org_settings enable row level security;
 
+drop policy if exists "org members can view org_settings" on org_settings;
 create policy "org members can view org_settings" on org_settings
   for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can upsert org_settings" on org_settings;
 create policy "org members can upsert org_settings" on org_settings
   for insert with check (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can update org_settings" on org_settings;
 create policy "org members can update org_settings" on org_settings
   for update using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
@@ -324,10 +360,13 @@ create table if not exists client_profiles (
 
 alter table client_profiles enable row level security;
 
+drop policy if exists "org members can view client_profiles" on client_profiles;
 create policy "org members can view client_profiles" on client_profiles
   for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can upsert client_profiles" on client_profiles;
 create policy "org members can upsert client_profiles" on client_profiles
   for insert with check (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can update client_profiles" on client_profiles;
 create policy "org members can update client_profiles" on client_profiles
   for update using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
@@ -353,10 +392,13 @@ create table if not exists onboarding_data (
 
 alter table onboarding_data enable row level security;
 
+drop policy if exists "org members can view onboarding_data" on onboarding_data;
 create policy "org members can view onboarding_data" on onboarding_data
   for select using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can upsert onboarding_data" on onboarding_data;
 create policy "org members can upsert onboarding_data" on onboarding_data
   for insert with check (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
+drop policy if exists "org members can update onboarding_data" on onboarding_data;
 create policy "org members can update onboarding_data" on onboarding_data
   for update using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
@@ -370,10 +412,13 @@ create table if not exists onboarding_progress (
 
 alter table onboarding_progress enable row level security;
 
+drop policy if exists "users can view their own onboarding_progress" on onboarding_progress;
 create policy "users can view their own onboarding_progress" on onboarding_progress
   for select using (user_id = auth.uid());
+drop policy if exists "users can upsert their own onboarding_progress" on onboarding_progress;
 create policy "users can upsert their own onboarding_progress" on onboarding_progress
   for insert with check (user_id = auth.uid());
+drop policy if exists "users can update their own onboarding_progress" on onboarding_progress;
 create policy "users can update their own onboarding_progress" on onboarding_progress
   for update using (user_id = auth.uid());
 
@@ -385,9 +430,12 @@ create table if not exists onboarding_wizard_data (
 
 alter table onboarding_wizard_data enable row level security;
 
+drop policy if exists "users can view their own onboarding_wizard_data" on onboarding_wizard_data;
 create policy "users can view their own onboarding_wizard_data" on onboarding_wizard_data
   for select using (user_id = auth.uid());
+drop policy if exists "users can upsert their own onboarding_wizard_data" on onboarding_wizard_data;
 create policy "users can upsert their own onboarding_wizard_data" on onboarding_wizard_data
   for insert with check (user_id = auth.uid());
+drop policy if exists "users can update their own onboarding_wizard_data" on onboarding_wizard_data;
 create policy "users can update their own onboarding_wizard_data" on onboarding_wizard_data
   for update using (user_id = auth.uid());

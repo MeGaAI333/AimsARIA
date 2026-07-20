@@ -13,14 +13,17 @@ create table if not exists agent_voice_configs (
 
 alter table agent_voice_configs enable row level security;
 
+drop policy if exists "anyone can read global or own-org voice configs" on agent_voice_configs;
 create policy "anyone can read global or own-org voice configs" on agent_voice_configs
   for select using (
     org_id is null or org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid())
   );
 
+drop policy if exists "org members can insert their own voice configs" on agent_voice_configs;
 create policy "org members can insert their own voice configs" on agent_voice_configs
   for insert with check (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
+drop policy if exists "org members can update their own voice configs" on agent_voice_configs;
 create policy "org members can update their own voice configs" on agent_voice_configs
   for update using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 

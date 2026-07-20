@@ -20,11 +20,13 @@ create table if not exists voice_call_contexts (
 
 alter table voice_call_contexts enable row level security;
 
+drop policy if exists "org members can view voice_call_contexts" on voice_call_contexts;
 create policy "org members can view voice_call_contexts" on voice_call_contexts
   for select using (
     org_id is null or org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid())
   );
 
+drop policy if exists "org members can insert voice_call_contexts" on voice_call_contexts;
 create policy "org members can insert voice_call_contexts" on voice_call_contexts
   for insert with check (
     org_id is null or org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid())

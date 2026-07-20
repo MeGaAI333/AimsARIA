@@ -31,6 +31,7 @@ ADD COLUMN IF NOT EXISTS notification_preferences JSONB DEFAULT '{
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policy for notifications
+drop policy if exists "Users can view org notifications" on notifications;
 CREATE POLICY "Users can view org notifications"
 ON notifications
 FOR SELECT
