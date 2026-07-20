@@ -34,4 +34,4 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view org notifications"
 ON notifications
 FOR SELECT
-USING (org_id = (SELECT org_id FROM auth.users WHERE email = current_user_email()));
+USING (org_id = (SELECT raw_user_meta_data->>'org_id' FROM auth.users WHERE id = auth.uid()));
