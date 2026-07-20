@@ -4,7 +4,7 @@
 -- until they save their own override.
 create table if not exists agent_voice_configs (
   id uuid default gen_random_uuid() primary key,
-  org_id text,
+  org_id text references organizations(id),
   agent_id text not null,
   settings jsonb not null,
   updated_at timestamp default now(),

@@ -19,11 +19,33 @@ serve(async (req) => {
   }
 
   try {
-    const { email, name, role, org_id } = await req.json();
+    const { email, name, role, org_id, org_name, parent_org_id } = await req.json();
 
     if (!email || !role || !org_id) {
       return new Response(
         JSON.stringify({ error: "Missing required fields: email, role, org_id" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Ensure the org (or location) exists before creating a user for it —
+    // every org_id column in the schema is a foreign key against
+    // organizations, so this has to happen first or every later insert for
+    // a brand-new org_id (contacts, tasks, campaigns, ...) would fail.
+    // ignoreDuplicates so inviting a second person to an existing org never
+    // clobbers its name/parent — only the first invite for a given org_id
+    // sets those.
+    const { error: orgError } = await supabase
+      .from("organizations")
+      .upsert(
+        { id: org_id, name: org_name || org_id, parent_org_id: parent_org_id || null },
+        { onConflict: "id", ignoreDuplicates: true }
+      );
+
+    if (orgError) {
+      console.error("Error upserting organization:", orgError);
+      return new Response(
+        JSON.stringify({ error: orgError.message || "Failed to set up organization" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }

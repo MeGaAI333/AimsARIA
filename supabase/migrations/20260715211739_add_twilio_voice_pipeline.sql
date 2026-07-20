@@ -7,7 +7,7 @@
 -- may not have a resolved org at connect time.
 create table if not exists voice_call_contexts (
   id uuid default gen_random_uuid() primary key,
-  org_id text,
+  org_id text references organizations(id),
   agent_id text not null,
   campaign_id uuid references campaigns(id),
   contact_id uuid references contacts(id),

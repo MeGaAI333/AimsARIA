@@ -1,7 +1,7 @@
 -- Create notifications table
 CREATE TABLE IF NOT EXISTS notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id TEXT NOT NULL,
+  org_id TEXT NOT NULL REFERENCES organizations(id),
   user_email TEXT NOT NULL,
   event_type TEXT NOT NULL,
   subject TEXT NOT NULL,

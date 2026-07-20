@@ -29,7 +29,7 @@ function InvitePanel({ currentColors }) {
     const orgId = company.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
     try {
       const { error } = await supabase.functions.invoke("invite-user", {
-        body: { email: email.trim(), name: name.trim(), role, org_id: orgId },
+        body: { email: email.trim(), name: name.trim(), role, org_id: orgId, org_name: company.trim() },
       });
       if (error) throw new Error(error.message);
       setStatus("success");

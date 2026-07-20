@@ -34,7 +34,7 @@ create policy "org members can update campaign_contacts" on campaign_contacts
 create table if not exists call_recordings (
   id uuid default gen_random_uuid() primary key,
   call_id text unique not null,
-  org_id text not null,
+  org_id text not null references organizations(id),
   agent_id text,
   campaign_id uuid references campaigns(id),
   duration_seconds int default 0,

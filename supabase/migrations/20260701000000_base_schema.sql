@@ -9,9 +9,38 @@
 -- every RLS policy in this app compares against
 -- raw_user_meta_data->>'org_id', which is text.
 
+-- The source of truth for org_id: every org_id column below is a real
+-- foreign key against this table, so a typo or an org that was never set
+-- up can't silently create orphaned rows or leak into another org's data.
+-- parent_org_id groups multiple locations under one client (e.g.
+-- 'acme-downtown' and 'acme-uptown' both pointing at 'acme') for reporting
+-- — it does NOT widen data access; every RLS policy still keys off the
+-- exact org_id on the row, never the parent chain.
+create table if not exists organizations (
+  id text primary key,
+  name text not null,
+  parent_org_id text references organizations(id),
+  created_at timestamptz default now()
+);
+
+alter table organizations enable row level security;
+
+create policy "org members can view their own org" on organizations
+  for select using (
+    id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid())
+    or parent_org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid())
+  );
+
+-- Sentinel row for legacy/unassigned data — voice-agent/server.js and the
+-- bland-webhook function fall back to org_id = 'default' when a call
+-- context has no resolved org, so this must exist or those inserts would
+-- fail the FK constraint below.
+insert into organizations (id, name) values ('default', 'Unassigned')
+on conflict (id) do nothing;
+
 create table if not exists contacts (
   id uuid default gen_random_uuid() primary key,
-  org_id text,
+  org_id text references organizations(id),
   name text not null,
   company text,
   email text,
@@ -41,7 +70,7 @@ create policy "org members can delete contacts" on contacts
 
 create table if not exists tasks (
   id uuid default gen_random_uuid() primary key,
-  org_id text,
+  org_id text references organizations(id),
   title text not null,
   due text,
   priority text default 'medium',
@@ -65,7 +94,7 @@ create policy "org members can delete tasks" on tasks
 
 create table if not exists notes (
   id uuid default gen_random_uuid() primary key,
-  org_id text,
+  org_id text references organizations(id),
   contact_name text,
   content text,
   author text,
@@ -84,7 +113,7 @@ create policy "org members can delete notes" on notes
 
 create table if not exists events (
   id uuid default gen_random_uuid() primary key,
-  org_id text,
+  org_id text references organizations(id),
   title text not null,
   date date,
   time text,
@@ -106,7 +135,7 @@ create policy "org members can delete events" on events
 
 create table if not exists conversations (
   id uuid default gen_random_uuid() primary key,
-  org_id text,
+  org_id text references organizations(id),
   contact_id uuid references contacts(id) on delete set null,
   contact_name text,
   contact_company text,
@@ -134,7 +163,7 @@ create policy "org members can update conversations" on conversations
 -- (which bypasses RLS), so only the browser-facing path needs a policy.
 create table if not exists communication_logs (
   id uuid default gen_random_uuid() primary key,
-  org_id text,
+  org_id text references organizations(id),
   contact_id uuid references contacts(id) on delete set null,
   contact_name text,
   contact_phone text,
@@ -159,7 +188,7 @@ create policy "org members can update communication_logs" on communication_logs
 
 create table if not exists campaigns (
   id uuid default gen_random_uuid() primary key,
-  org_id text,
+  org_id text references organizations(id),
   created_by uuid references auth.users(id),
   name text not null,
   description text,
@@ -190,7 +219,7 @@ create policy "org members can delete campaigns" on campaigns
 -- migration keeps doing real work instead of becoming a no-op.
 create table if not exists lyric_posts (
   id uuid default gen_random_uuid() primary key,
-  org_id text,
+  org_id text references organizations(id),
   content_type text,
   platform text,
   topic text,
@@ -222,7 +251,7 @@ create policy "org members can delete lyric_posts" on lyric_posts
 
 create table if not exists schedule_rules (
   id uuid default gen_random_uuid() primary key,
-  org_id text,
+  org_id text references organizations(id),
   name text,
   platforms text[],
   days_of_week text[],
@@ -248,7 +277,7 @@ create policy "org members can delete schedule_rules" on schedule_rules
 -- match what the code actually reads rather than picking one and silently
 -- breaking the other function.
 create table if not exists org_settings (
-  org_id text primary key,
+  org_id text primary key references organizations(id),
   buffer_api_token text,
   buffer_token text,
   buffer_connected_at timestamptz,
@@ -272,7 +301,7 @@ create policy "org members can update org_settings" on org_settings
   for update using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
 create table if not exists client_profiles (
-  org_id text primary key,
+  org_id text primary key references organizations(id),
   business_name text,
   industry text,
   website text,
@@ -303,7 +332,7 @@ create policy "org members can update client_profiles" on client_profiles
   for update using (org_id = (select raw_user_meta_data->>'org_id' from auth.users where id = auth.uid()));
 
 create table if not exists onboarding_data (
-  org_id text primary key,
+  org_id text primary key references organizations(id),
   business_name text, industry text, years_in_business text, website text, phone text,
   service_area text, staff_size text, revenue_range text,
   primary_pain text, monthly_lead_volume text, ad_spend text, current_response_time text,
