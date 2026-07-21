@@ -161,7 +161,7 @@ function CreateCampaignModal({ onClose, onSave, orgId }) {
   );
 }
 
-function LaunchPreviewModal({ campaign, matchedContacts, onClose, onConfirm, launching, progress }) {
+function LaunchPreviewModal({ campaign, matchedContacts, onClose, onConfirm, launching, progress, onAddContact }) {
   const typeInfo = CAMPAIGN_TYPES.find(t => t.id === campaign.campaign_type);
   const channel = campaign.channel || "call";
   const estCost = channel === "call" ? (matchedContacts.length * 0.09 * 12).toFixed(2) : null;
@@ -193,7 +193,12 @@ function LaunchPreviewModal({ campaign, matchedContacts, onClose, onConfirm, lau
         </div>
 
         {matchedContacts.length === 0 && (
-          <p style={{ fontSize:12, color:C.red, marginBottom:16 }}>No contacts match this campaign's stage criteria, or none have already been contacted by this campaign.</p>
+          <div style={{ marginBottom:16 }}>
+            <p style={{ fontSize:12, color:C.red, margin:"0 0 10px" }}>No contacts match this campaign's stage criteria, or none have already been contacted by this campaign.</p>
+            <button onClick={onAddContact} style={{ padding:"8px 14px", borderRadius:8, border:`1px solid ${C.primary}`, background:"transparent", color:C.primary, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+              + Add Contact Now
+            </button>
+          </div>
         )}
 
         {launching && (
@@ -217,7 +222,7 @@ function LaunchPreviewModal({ campaign, matchedContacts, onClose, onConfirm, lau
   );
 }
 
-export default function Campaigns() {
+export default function Campaigns({ setActiveTab }) {
   const [campaigns, setCampaigns] = useState([]);
   const [campaignStats, setCampaignStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -492,6 +497,7 @@ export default function Campaigns() {
           onConfirm={confirmLaunch}
           launching={launching}
           progress={launchProgress}
+          onAddContact={() => { setLaunchTarget(null); setActiveTab?.("crm"); }}
         />
       )}
     </div>

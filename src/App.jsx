@@ -87,7 +87,7 @@ export default function App() {
       case "pipeline":          return <Pipeline setSelectedLead={setSelectedLead} setActiveTab={navTo} />;
       case "conversations":     return <Conversations selectedLead={selectedLead} setSelectedLead={setSelectedLead} orgId={orgId} />;
       case "work-queue":        return <WorkQueue userEmail={session.user.email} />;
-      case "campaigns":         return <Campaigns />;
+      case "campaigns":         return <Campaigns setActiveTab={navTo} />;
       case "agent-aria":        return <AgentPage agentId="aria"     setActiveTab={navTo} orgId={orgId} role={role} />;
       case "agent-melody":      return <AgentPage agentId="melody"   setActiveTab={navTo} orgId={orgId} role={role} />;
       case "agent-lyric":       return <AgentPage agentId="lyric"    setActiveTab={navTo} orgId={orgId} role={role} />;
