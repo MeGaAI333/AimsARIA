@@ -23,12 +23,18 @@ function xmlEscape(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// Twilio does not forward URL query parameters for <Connect><Stream> (unlike
+// the legacy one-way <Start><Stream>) — it strips them silently, so ctx has
+// to travel as a <Parameter> instead. It arrives in the WebSocket's "start"
+// event as start.customParameters.ctx rather than in the connection URL.
 function streamTwiml(ctxId) {
-  const wssUrl = `${VOICE_AGENT_BASE_URL.replace(/^http/, "ws")}/voice/stream?ctx=${ctxId}`;
+  const wssUrl = `${VOICE_AGENT_BASE_URL.replace(/^http/, "ws")}/voice/stream`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
-    <Stream url="${xmlEscape(wssUrl)}" />
+    <Stream url="${xmlEscape(wssUrl)}">
+      <Parameter name="ctx" value="${xmlEscape(ctxId)}" />
+    </Stream>
   </Connect>
 </Response>`;
 }
@@ -46,11 +52,8 @@ async function hangupCall(callSid) {
 // Twilio hits this right after an outbound call (originated by send-outreach) connects.
 app.post("/voice/outbound", (req, res) => {
   const ctxId = req.query.ctx;
-  console.log(`[debug] /voice/outbound hit, req.url=${req.url}, ctx=${ctxId}`);
   if (!ctxId) return res.status(400).send("Missing ctx");
-  const twiml = streamTwiml(ctxId);
-  console.log(`[debug] TwiML returned:\n${twiml}`);
-  res.type("text/xml").send(twiml);
+  res.type("text/xml").send(streamTwiml(ctxId));
 });
 
 // Twilio hits this when someone calls in to a number pointed at an inbound agent (e.g. MUSE).
@@ -122,12 +125,9 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
 server.on("upgrade", (req, socket, head) => {
-  console.log(`[debug] upgrade request, req.url=${req.url}, host header=${req.headers.host}`);
   const url = new URL(req.url, `http://${req.headers.host}`);
   if (url.pathname === "/voice/stream") {
     wss.handleUpgrade(req, socket, head, (ws) => {
-      ws.ctxId = url.searchParams.get("ctx");
-      console.log(`[debug] parsed ctx from upgrade URL: ${ws.ctxId}`);
       wss.emit("connection", ws, req);
     });
   } else {
@@ -276,15 +276,16 @@ wss.on("connection", (twilioWs) => {
       call.streamSid = msg.start.streamSid;
       call.callSid = msg.start.callSid;
       call.startedAt = Date.now();
+      const ctxId = msg.start.customParameters?.ctx;
 
       const { data: ctx, error } = await supabase
         .from("voice_call_contexts")
         .select("*")
-        .eq("id", twilioWs.ctxId)
+        .eq("id", ctxId)
         .single();
 
       if (error || !ctx) {
-        console.error("Missing voice call context for", twilioWs.ctxId);
+        console.error("Missing voice call context for", ctxId);
         twilioWs.close();
         return;
       }
