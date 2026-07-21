@@ -20,8 +20,18 @@ const CHANNEL_OPTIONS = [
   { value: "email", icon: "📧", label: "Email" },
 ];
 
-function CreateCampaignModal({ onClose, onSave, orgId }) {
-  const [form, setForm] = useState({
+function CreateCampaignModal({ onClose, onSave, orgId, campaign }) {
+  const isEdit = !!campaign;
+  const [form, setForm] = useState(() => campaign ? {
+    name: campaign.name || "",
+    description: campaign.description || "",
+    agent_id: campaign.agent_id || "aria",
+    campaign_type: campaign.campaign_type || "lead-recovery",
+    channel: campaign.channel || "call",
+    target_audience: campaign.target_audience || "",
+    goal: campaign.goal || "",
+    start_date: campaign.start_date || new Date().toISOString().split('T')[0],
+  } : {
     name: "",
     description: "",
     agent_id: "aria",
@@ -58,7 +68,7 @@ function CreateCampaignModal({ onClose, onSave, orgId }) {
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
       <div style={{ width:520, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:28, maxHeight:"90vh", overflowY:"auto" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
-          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>New Campaign</h3>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:C.textPrimary }}>{isEdit ? "Edit Campaign" : "New Campaign"}</h3>
           <button onClick={onClose} style={{ background:"transparent", border:"none", color:C.textMuted, fontSize:18, cursor:"pointer" }}>✕</button>
         </div>
 
@@ -152,7 +162,7 @@ function CreateCampaignModal({ onClose, onSave, orgId }) {
             <button onClick={onClose} style={{ padding:"10px 20px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSecondary, fontSize:13, cursor:"pointer" }}>Cancel</button>
             <button onClick={handleSave} disabled={saving || !form.name.trim()}
               style={{ padding:"10px 20px", borderRadius:8, border:"none", background:C.primary, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", opacity:saving || !form.name.trim()?0.6:1 }}>
-              {saving?"Creating…":"Create Campaign"}
+              {isEdit ? (saving ? "Saving…" : "Save Changes") : (saving ? "Creating…" : "Create Campaign")}
             </button>
           </div>
         </div>
@@ -229,6 +239,7 @@ export default function Campaigns({ setActiveTab }) {
   const [showAdd, setShowAdd] = useState(false);
   const [orgId, setOrgId] = useState("");
   const [launchTarget, setLaunchTarget] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
   const [matchedContacts, setMatchedContacts] = useState([]);
   const [launching, setLaunching] = useState(false);
   const [launchProgress, setLaunchProgress] = useState(0);
@@ -289,6 +300,32 @@ export default function Campaigns({ setActiveTab }) {
     } else if (error) {
       console.error("Error creating campaign:", error);
       alert("Failed to create campaign: " + error.message);
+    }
+  };
+
+  const handleUpdate = async (form) => {
+    const { data, error } = await supabase
+      .from("campaigns")
+      .update({
+        name: form.name,
+        description: form.description,
+        agent_id: form.agent_id,
+        campaign_type: form.campaign_type,
+        channel: form.channel,
+        target_audience: form.target_audience,
+        goal: form.goal,
+        start_date: form.start_date,
+      })
+      .eq("id", editTarget.id)
+      .select()
+      .single();
+
+    if (!error && data) {
+      setCampaigns(p => p.map(c => c.id === data.id ? data : c));
+      setEditTarget(null);
+    } else if (error) {
+      console.error("Error updating campaign:", error);
+      alert("Failed to update campaign: " + error.message);
     }
   };
 
@@ -480,6 +517,10 @@ export default function Campaigns({ setActiveTab }) {
                       🚀 {campaign.status === "active" ? "Relaunch" : "Launch"}
                     </button>
                   )}
+                  <button onClick={() => setEditTarget(campaign)}
+                    style={{ padding:"6px 12px", background:"transparent", border:`1px solid ${C.border}`, color:C.textSecondary, borderRadius:6, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                    ✎ Edit
+                  </button>
                   <button onClick={() => handleDelete(campaign.id)} style={{ background:"transparent", border:"none", color:C.textMuted, cursor:"pointer", fontSize:14, padding:"0 8px" }}>✕</button>
                 </div>
               </div>
@@ -489,6 +530,7 @@ export default function Campaigns({ setActiveTab }) {
       )}
 
       {showAdd && <CreateCampaignModal onClose={() => setShowAdd(false)} onSave={handleCreate} orgId={orgId} />}
+      {editTarget && <CreateCampaignModal campaign={editTarget} onClose={() => setEditTarget(null)} onSave={handleUpdate} orgId={orgId} />}
       {launchTarget && (
         <LaunchPreviewModal
           campaign={launchTarget}
