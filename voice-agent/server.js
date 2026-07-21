@@ -46,8 +46,11 @@ async function hangupCall(callSid) {
 // Twilio hits this right after an outbound call (originated by send-outreach) connects.
 app.post("/voice/outbound", (req, res) => {
   const ctxId = req.query.ctx;
+  console.log(`[debug] /voice/outbound hit, req.url=${req.url}, ctx=${ctxId}`);
   if (!ctxId) return res.status(400).send("Missing ctx");
-  res.type("text/xml").send(streamTwiml(ctxId));
+  const twiml = streamTwiml(ctxId);
+  console.log(`[debug] TwiML returned:\n${twiml}`);
+  res.type("text/xml").send(twiml);
 });
 
 // Twilio hits this when someone calls in to a number pointed at an inbound agent (e.g. MUSE).
@@ -119,10 +122,12 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
 server.on("upgrade", (req, socket, head) => {
+  console.log(`[debug] upgrade request, req.url=${req.url}, host header=${req.headers.host}`);
   const url = new URL(req.url, `http://${req.headers.host}`);
   if (url.pathname === "/voice/stream") {
     wss.handleUpgrade(req, socket, head, (ws) => {
       ws.ctxId = url.searchParams.get("ctx");
+      console.log(`[debug] parsed ctx from upgrade URL: ${ws.ctxId}`);
       wss.emit("connection", ws, req);
     });
   } else {
