@@ -778,6 +778,7 @@ function AddContactModal({ onClose, onSave }) {
               <option value="melody">MELODY</option>
               <option value="lyric">LYRIC</option>
               <option value="muse">MUSE</option>
+              <option value="allegra">ALLEGRA</option>
             </select>
           </div>
         </div>
