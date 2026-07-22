@@ -28,8 +28,15 @@ import WorkQueue from "./views/WorkQueue.jsx";
 import ClientProfile from "./views/ClientProfile.jsx";
 import Onboarding from "./views/Onboarding.jsx";
 import OnboardingHub from "./views/OnboardingHub.jsx";
+import ProfitLeakAnalysis from "./views/ProfitLeakAnalysis.jsx";
 
 export default function App() {
+  // Public, unauthenticated page reached via the link Allegra texts/emails
+  // during outreach — must render before any session/login check.
+  if (window.location.pathname === "/analysis") {
+    return <ProfitLeakAnalysis />;
+  }
+
   const [session, setSession]           = useState(undefined); // undefined = loading
   const [tab, setTab]                   = useState("dashboard");
   const [role, setRole]                 = useState("user");

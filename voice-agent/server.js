@@ -12,6 +12,7 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
 const TRANSFER_PHONE_NUMBER = process.env.TRANSFER_PHONE_NUMBER;
 const BUSINESS_TIMEZONE = process.env.BUSINESS_TIMEZONE || "America/New_York";
 
@@ -174,7 +175,11 @@ async function transferToHuman(callSid, reason) {
     return "I'm not able to transfer you right now, but let's get something scheduled instead.";
   }
   const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64");
-  const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Dial>${TRANSFER_PHONE_NUMBER}</Dial></Response>`;
+  // TRANSFER_PHONE_NUMBER may be a comma-separated list — <Dial> rings all
+  // of them simultaneously and connects whoever picks up first.
+  const numbers = TRANSFER_PHONE_NUMBER.split(",").map(n => n.trim()).filter(Boolean);
+  const dialTargets = numbers.map(n => `<Number>${n}</Number>`).join("");
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Dial>${dialTargets}</Dial></Response>`;
   const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`, {
     method: "POST",
     headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
@@ -206,6 +211,34 @@ async function scheduleAppointment(ctx, { date, time }) {
     return "I had trouble booking that — let's try a different day or time.";
   }
   return `Booked for ${date}${time ? " at " + time : ""}.`;
+}
+
+// Actually texts the Profit Leak Analysis link — not just a promise to.
+// contact_id/org_id ride along in the link's query string so the response
+// (a public, unauthenticated form submission) ties back to the right CRM
+// contact and org.
+async function sendAnalysisLink(ctx) {
+  if (!ctx.contact_phone) return "I don't have a number on file to text that to.";
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+    console.error("send_analysis_link called but Twilio SMS is not configured.");
+    return "I'm not able to text that right now, but let's get something scheduled instead.";
+  }
+  const link = `${VOICE_AGENT_BASE_URL}/analysis?c=${ctx.contact_id || ""}&org=${ctx.org_id || ""}`;
+  const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64");
+  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, {
+    method: "POST",
+    headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      From: TWILIO_PHONE_NUMBER,
+      To: ctx.contact_phone,
+      Body: `Here's your Profit Leak Analysis from AIMS AI: ${link}`,
+    }).toString(),
+  });
+  if (!res.ok) {
+    console.error("Error texting analysis link:", await res.text());
+    return "I had trouble sending that text — let's try again in a moment.";
+  }
+  return "Sent it to your phone just now.";
 }
 
 wss.on("connection", (twilioWs) => {
@@ -300,6 +333,8 @@ wss.on("connection", (twilioWs) => {
               content = await transferToHuman(call.callSid, args.reason);
             } else if (fnName === "schedule_appointment") {
               content = await scheduleAppointment(call.ctx, args);
+            } else if (fnName === "send_analysis_link") {
+              content = await sendAnalysisLink(call.ctx);
             }
 
             dg.send(JSON.stringify({
