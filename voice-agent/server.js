@@ -329,12 +329,20 @@ wss.on("connection", (twilioWs) => {
 
           (async () => {
             let content = "ok";
-            if (fnName === "transfer_to_human") {
-              content = await transferToHuman(call.callSid, args.reason);
-            } else if (fnName === "schedule_appointment") {
-              content = await scheduleAppointment(call.ctx, args);
-            } else if (fnName === "send_analysis_link") {
-              content = await sendAnalysisLink(call.ctx);
+            try {
+              if (fnName === "transfer_to_human") {
+                content = await transferToHuman(call.callSid, args.reason);
+              } else if (fnName === "schedule_appointment") {
+                content = await scheduleAppointment(call.ctx, args);
+              } else if (fnName === "send_analysis_link") {
+                content = await sendAnalysisLink(call.ctx);
+              }
+            } catch (err) {
+              // Deepgram waits indefinitely for a FunctionCallResponse — an
+              // uncaught error here would leave the agent silent for the
+              // rest of the call instead of just this one function failing.
+              console.error(`Error running function "${fnName}":`, err);
+              content = "I ran into a problem with that just now — let's keep going.";
             }
 
             dg.send(JSON.stringify({
