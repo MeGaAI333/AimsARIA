@@ -12,6 +12,8 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+const TRANSFER_PHONE_NUMBER = process.env.TRANSFER_PHONE_NUMBER;
+const BUSINESS_TIMEZONE = process.env.BUSINESS_TIMEZONE || "America/New_York";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -153,6 +155,59 @@ function personalize(text, contactName) {
   return text.replace(/\{\{name\}\}/g, contactName || "there");
 }
 
+// Injected at the front of every call's prompt so the agent can reference
+// specific upcoming day names ("how does Thursday sound?") instead of only
+// vague relative terms — Deepgram has no built-in notion of "today."
+function todayContext() {
+  const now = new Date();
+  const dayName = now.toLocaleDateString("en-US", { weekday: "long", timeZone: BUSINESS_TIMEZONE });
+  const dateStr = now.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: BUSINESS_TIMEZONE });
+  return `Today is ${dayName}, ${dateStr}. Use this to reference specific upcoming days by name (e.g. "Today is Tuesday — how does Thursday sound?") instead of vague relative terms like "in a few days."`;
+}
+
+// Redirects the live Twilio call to a real phone number, ending the AI
+// bridge — this is a genuine live transfer, not a warm handoff message.
+async function transferToHuman(callSid, reason) {
+  if (!callSid || !TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) return "Transfer is not available right now.";
+  if (!TRANSFER_PHONE_NUMBER) {
+    console.error("Transfer requested but TRANSFER_PHONE_NUMBER is not configured. Reason:", reason);
+    return "I'm not able to transfer you right now, but let's get something scheduled instead.";
+  }
+  const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64");
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Dial>${TRANSFER_PHONE_NUMBER}</Dial></Response>`;
+  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`, {
+    method: "POST",
+    headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ Twiml: twiml }).toString(),
+  });
+  if (!res.ok) {
+    console.error("Error transferring call:", await res.text());
+    return "I wasn't able to transfer the call — let's keep going.";
+  }
+  return "Transferring you now.";
+}
+
+// Books the review directly onto the org's Calendar (events table) —
+// Melody has no calendar of her own, this just tags the event as hers.
+async function scheduleAppointment(ctx, { date, time }) {
+  if (!date) return "I need a specific date to book that.";
+  const { error } = await supabase.from("events").insert({
+    org_id: ctx.org_id || "default",
+    title: "Profit Leak Review",
+    date,
+    time: time || "",
+    duration: "15 min",
+    type: "call",
+    contact_name: ctx.contact_name || "",
+    agent: "melody",
+  });
+  if (error) {
+    console.error("Error booking appointment:", error);
+    return "I had trouble booking that — let's try a different day or time.";
+  }
+  return `Booked for ${date}${time ? " at " + time : ""}.`;
+}
+
 wss.on("connection", (twilioWs) => {
   const call = {
     streamSid: null,
@@ -212,6 +267,9 @@ wss.on("connection", (twilioWs) => {
       if (settingsMessage.agent?.greeting) {
         settingsMessage.agent.greeting = personalize(settingsMessage.agent.greeting, call.ctx.contact_name);
       }
+      if (settingsMessage.agent?.think?.prompt) {
+        settingsMessage.agent.think.prompt = `${todayContext()}\n\n${settingsMessage.agent.think.prompt}`;
+      }
       dg.send(JSON.stringify(settingsMessage));
     });
 
@@ -233,15 +291,28 @@ wss.on("connection", (twilioWs) => {
           break;
         case "FunctionCallRequest": {
           const call_id = msg.function_call_id || msg.id;
-          dg.send(JSON.stringify({
-            type: "FunctionCallResponse",
-            function_call_id: call_id,
-            name: msg.function_name || msg.name,
-            content: "ok",
-          }));
-          if ((msg.function_name || msg.name) === "end_conversation") {
-            setTimeout(() => hangupCall(call.callSid), 2500);
-          }
+          const fnName = msg.function_name || msg.name;
+          const args = msg.input || msg.arguments || {};
+
+          (async () => {
+            let content = "ok";
+            if (fnName === "transfer_to_human") {
+              content = await transferToHuman(call.callSid, args.reason);
+            } else if (fnName === "schedule_appointment") {
+              content = await scheduleAppointment(call.ctx, args);
+            }
+
+            dg.send(JSON.stringify({
+              type: "FunctionCallResponse",
+              function_call_id: call_id,
+              name: fnName,
+              content,
+            }));
+
+            if (fnName === "end_conversation") {
+              setTimeout(() => hangupCall(call.callSid), 2500);
+            }
+          })();
           break;
         }
         case "Error":
