@@ -323,9 +323,22 @@ wss.on("connection", (twilioWs) => {
           clearTwilioPlayback();
           break;
         case "FunctionCallRequest": {
-          const call_id = msg.function_call_id || msg.id;
-          const fnName = msg.function_name || msg.name;
-          const args = msg.input || msg.arguments || {};
+          // TEMPORARY: log the exact raw shape Deepgram sends — every
+          // format guessed from docs/SDK types has been rejected as
+          // UNPARSABLE_CLIENT_MESSAGE, so stop guessing and read the real
+          // wire data instead.
+          console.log("[debug] raw FunctionCallRequest:", JSON.stringify(msg));
+
+          // Newer Deepgram schema nests calls in a `functions` array
+          // (per @deepgram/agent's AgentV1FunctionCallRequest.Functions.Item);
+          // fall back to older flat fields in case that's what's live here.
+          const fc = (msg.functions && msg.functions[0]) || msg;
+          const call_id = fc.id || fc.function_call_id || msg.function_call_id || msg.id;
+          const fnName = fc.name || fc.function_name || msg.function_name || msg.name;
+          let args = fc.arguments ?? fc.input ?? msg.input ?? msg.arguments ?? {};
+          if (typeof args === "string") {
+            try { args = JSON.parse(args); } catch { args = {}; }
+          }
 
           (async () => {
             let content = "ok";
@@ -350,11 +363,13 @@ wss.on("connection", (twilioWs) => {
             // reference client.py after the previous {name, content} shape
             // was silently rejected server-side (UNPARSABLE_CLIENT_MESSAGE),
             // which is why every function call left the agent dead silent.
-            dg.send(JSON.stringify({
+            const responseMsg = {
               type: "FunctionCallResponse",
               function_call_id: call_id,
               output: content,
-            }));
+            };
+            console.log("[debug] sending FunctionCallResponse:", JSON.stringify(responseMsg));
+            dg.send(JSON.stringify(responseMsg));
 
             if (fnName === "end_conversation") {
               setTimeout(() => hangupCall(call.callSid), 2500);
