@@ -345,11 +345,15 @@ wss.on("connection", (twilioWs) => {
               content = "I ran into a problem with that just now — let's keep going.";
             }
 
+            // Deepgram's expected schema is function_call_id + output (no
+            // "name" field) — confirmed against deepgram/voice-agent-function-calling's
+            // reference client.py after the previous {name, content} shape
+            // was silently rejected server-side (UNPARSABLE_CLIENT_MESSAGE),
+            // which is why every function call left the agent dead silent.
             dg.send(JSON.stringify({
               type: "FunctionCallResponse",
               function_call_id: call_id,
-              name: fnName,
-              content,
+              output: content,
             }));
 
             if (fnName === "end_conversation") {
