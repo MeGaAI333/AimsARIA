@@ -90,6 +90,7 @@ if __name__ == "__main__":
         print("Specify --vertical <key> or --all-verticals")
 
     run_step("build_workbook.py", ["--input-dir", output_dir])
+    run_step("build_master.py", ["--output-dir", "output"])
 
     print(f"\n{'='*60}")
     print(f"All done. Results in: {output_dir}")
