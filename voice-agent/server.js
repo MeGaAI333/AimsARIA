@@ -363,10 +363,19 @@ wss.on("connection", (twilioWs) => {
             // reference client.py after the previous {name, content} shape
             // was silently rejected server-side (UNPARSABLE_CLIENT_MESSAGE),
             // which is why every function call left the agent dead silent.
+            // The live request came back as {type, functions: [{id, name,
+            // arguments, client_side}]}, not the flat {function_call_id,
+            // function_name} shape every doc/reference implementation
+            // described — the flat {function_call_id, output} response
+            // built from that wrong assumption was rejected too. Mirroring
+            // the request's own array-wrapped shape here, with both
+            // "content" and "output" set since which one is actually read
+            // is still unconfirmed.
             const responseMsg = {
               type: "FunctionCallResponse",
-              function_call_id: call_id,
-              output: content,
+              functions: [
+                { id: call_id, name: fnName, content, output: content },
+              ],
             };
             console.log("[debug] sending FunctionCallResponse:", JSON.stringify(responseMsg));
             dg.send(JSON.stringify(responseMsg));
