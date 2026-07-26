@@ -67,14 +67,21 @@ Each row is one business with:
 - `suggested_opener` — a specific opening line for that business
 - contact details (phone, website, address)
 
-**Master workbook:** every run also automatically produces
+**Per-run workbook:** every run also automatically produces
 `output/<timestamp>/AIMS_Leads_Master.xlsx` — one Excel tab per
-vertical (sorted hottest lead first), plus a `Summary` tab with lead
-counts by tier per vertical. Plain functional formatting (bold
-header, frozen top row), no color branding. This is the single file
-worth pulling onto your own computer after a run — see the transfer
-command in the Quick command reference below. To rebuild it manually
-for an older run: `python build_workbook.py --input-dir output/<timestamp>`
+vertical (sorted hottest lead first) for just that run, plus a
+`Summary` tab with lead counts by tier. Plain functional formatting
+(bold header, frozen top row), no color branding. To rebuild it
+manually for an older run: `python build_workbook.py --input-dir output/<timestamp>`
+
+**Cumulative master workbook (the one to actually use day to day):**
+every run also rebuilds `output/AIMS_Master_Leads_ALL.xlsx` — every
+lead ever found across *every* run and city, combined into one
+ongoing file. Deduplicated by phone number within each vertical; if
+the same business turns up in two runs, the more recent scan wins.
+This is the file worth pulling onto your own computer and checking
+each morning — see the Quick command reference below. To rebuild it
+manually: `python build_master.py`
 
 View a CSV readably in the terminal:
 ```bash
@@ -206,6 +213,12 @@ for f in output/<timestamp>/*_scored.csv; do awk -F',' 'NR>1 && ($1 ~ /Tier 1|Ti
 scp meghan@<server-ip>:~/command-center/aims-scanner/output/<timestamp>/<file>.csv C:\Users\<you>\OneDrive\Desktop\<file>.csv
 ```
 *Produces:* a copy of that CSV file physically downloaded onto the Windows machine's Desktop, ready to double-click and open in Excel. Check `OneDrive\Desktop` vs plain `Desktop` first with `Test-Path` — OneDrive commonly redirects the real Desktop folder.
+
+**Pulling the cumulative master workbook specifically** (lives at a fixed path — no timestamp needed):
+```powershell
+scp meghan@<server-ip>:~/command-center/aims-scanner/output/AIMS_Master_Leads_ALL.xlsx C:\Users\<you>\OneDrive\Desktop\AIMS_Master_Leads_ALL.xlsx
+```
+*Produces:* the latest cumulative master workbook (every lead ever found, deduplicated) downloaded to the Desktop, overwriting the previous copy. This is the one command worth automating with a scheduled task, since the source path never changes run to run.
 
 **Managing the scheduled cron job:**
 ```bash
