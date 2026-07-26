@@ -323,15 +323,11 @@ wss.on("connection", (twilioWs) => {
           clearTwilioPlayback();
           break;
         case "FunctionCallRequest": {
-          // TEMPORARY: log the exact raw shape Deepgram sends — every
-          // format guessed from docs/SDK types has been rejected as
-          // UNPARSABLE_CLIENT_MESSAGE, so stop guessing and read the real
-          // wire data instead.
-          console.log("[debug] raw FunctionCallRequest:", JSON.stringify(msg));
-
-          // Newer Deepgram schema nests calls in a `functions` array
-          // (per @deepgram/agent's AgentV1FunctionCallRequest.Functions.Item);
-          // fall back to older flat fields in case that's what's live here.
+          // The live request arrives as {type, functions: [{id, name,
+          // arguments, client_side}]} — an array-wrapped shape, not the
+          // flat {function_call_id, function_name} that Deepgram's own
+          // docs/reference implementations describe. Confirmed by logging
+          // the raw wire message directly.
           const fc = (msg.functions && msg.functions[0]) || msg;
           const call_id = fc.id || fc.function_call_id || msg.function_call_id || msg.id;
           const fnName = fc.name || fc.function_name || msg.function_name || msg.name;
@@ -358,31 +354,14 @@ wss.on("connection", (twilioWs) => {
               content = "I ran into a problem with that just now — let's keep going.";
             }
 
-            // Deepgram's expected schema is function_call_id + output (no
-            // "name" field) — confirmed against deepgram/voice-agent-function-calling's
-            // reference client.py after the previous {name, content} shape
-            // was silently rejected server-side (UNPARSABLE_CLIENT_MESSAGE),
-            // which is why every function call left the agent dead silent.
-            // The live request came back as {type, functions: [{id, name,
-            // arguments, client_side}]}, not the flat {function_call_id,
-            // function_name} shape every doc/reference implementation
-            // described — the flat {function_call_id, output} response
-            // built from that wrong assumption was rejected too. Mirroring
-            // the request's own array-wrapped shape here, with both
-            // "content" and "output" set since which one is actually read
-            // is still unconfirmed.
-            // Deepgram's own docs consistently describe this as a FLAT
-            // object with "id" (not function_call_id, not array-wrapped
-            // like the request) — try that exact documented shape now that
-            // two structurally different guesses have both failed.
-            const responseMsg = {
+            // Despite the request being array-wrapped, the response itself
+            // is flat: {type, id, name, content} — confirmed working live.
+            dg.send(JSON.stringify({
               type: "FunctionCallResponse",
               id: call_id,
               name: fnName,
               content,
-            };
-            console.log("[debug] sending FunctionCallResponse:", JSON.stringify(responseMsg));
-            dg.send(JSON.stringify(responseMsg));
+            }));
 
             if (fnName === "end_conversation") {
               setTimeout(() => hangupCall(call.callSid), 2500);
