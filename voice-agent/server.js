@@ -371,11 +371,15 @@ wss.on("connection", (twilioWs) => {
             // the request's own array-wrapped shape here, with both
             // "content" and "output" set since which one is actually read
             // is still unconfirmed.
+            // Deepgram's own docs consistently describe this as a FLAT
+            // object with "id" (not function_call_id, not array-wrapped
+            // like the request) — try that exact documented shape now that
+            // two structurally different guesses have both failed.
             const responseMsg = {
               type: "FunctionCallResponse",
-              functions: [
-                { id: call_id, name: fnName, content, output: content },
-              ],
+              id: call_id,
+              name: fnName,
+              content,
             };
             console.log("[debug] sending FunctionCallResponse:", JSON.stringify(responseMsg));
             dg.send(JSON.stringify(responseMsg));
