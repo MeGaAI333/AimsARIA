@@ -458,7 +458,7 @@ function OnboardingWizard({ orgId, role, onComplete, onLyricStart }) {
       };
       for (const svc of (form.services_selected || [])) {
         for (const title of (taskSets[svc] || [])) {
-          await addTask({ title, status:"pending" }).catch(() => {});
+          await addTask({ title, status:"pending", priority:"high", done:false }).catch(() => {});
         }
       }
       // Lyric clients: once their onboarding tasks exist, jump straight into their LYRIC Workstation.
