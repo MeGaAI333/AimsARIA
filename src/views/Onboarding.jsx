@@ -401,7 +401,7 @@ function renderClientStep(step, form, set, toggle) {
 
 // ─── Wizard component ────────────────────────────────────────────────────────
 
-function OnboardingWizard({ orgId, role, onComplete }) {
+function OnboardingWizard({ orgId, role, onComplete, onLyricStart }) {
   const STEPS = role === "admin" ? ADMIN_STEPS : CLIENT_STEPS;
 
   const [step, setStep]     = useState(0);
@@ -460,6 +460,10 @@ function OnboardingWizard({ orgId, role, onComplete }) {
         for (const title of (taskSets[svc] || [])) {
           await addTask({ title, status:"pending" }).catch(() => {});
         }
+      }
+      // Lyric clients: once their onboarding tasks exist, jump straight into their LYRIC Workstation.
+      if ((form.services_selected || []).includes("lyric") && onLyricStart) {
+        onLyricStart(orgId);
       }
     }
     setDone(true);
@@ -544,7 +548,7 @@ const STATUS_COLOR = {
 
 // ─── Main export ─────────────────────────────────────────────────────────────
 
-export default function Onboarding({ role, orgId }) {
+export default function Onboarding({ role, orgId, onLyricStart }) {
   const [records, setRecords]         = useState([]);
   const [selectedOrg, setSelectedOrg] = useState(role === "admin" ? null : orgId);
   const [newOrgInput, setNewOrgInput] = useState("");
@@ -640,7 +644,7 @@ export default function Onboarding({ role, orgId }) {
               </h2>
               <div style={{ fontSize:12, color:C.textMuted }}>Org ID: {selectedOrg} · Admin view — all fields visible</div>
             </div>
-            <OnboardingWizard key={selectedOrg} orgId={selectedOrg} role="admin" onComplete={refreshList} />
+            <OnboardingWizard key={selectedOrg} orgId={selectedOrg} role="admin" onComplete={refreshList} onLyricStart={onLyricStart} />
           </>
         )}
       </div>

@@ -36,6 +36,7 @@ export default function App() {
   const [orgId, setOrgId]               = useState("");
   const [selectedLead, setSelectedLead] = useState(null);
   const [theme, setTheme]               = useState(() => localStorage.getItem("aims-theme") || "dark");
+  const [lyricOrgOverride, setLyricOrgOverride] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
@@ -78,7 +79,14 @@ export default function App() {
 
   if (!session) return <Login />;
 
-  const navTo = (newTab) => setTab(newTab);
+  const navTo = (newTab) => { setLyricOrgOverride(null); setTab(newTab); };
+
+  // Called when a client's onboarding is completed with LYRIC among their services —
+  // jumps the admin straight into that client's LYRIC Workstation as soon as the tasks are created.
+  const startLyricWorkstation = (targetOrgId) => {
+    setLyricOrgOverride(targetOrgId);
+    setTab("lyric-workstation");
+  };
 
   const renderView = () => {
     switch (tab) {
@@ -93,9 +101,9 @@ export default function App() {
       case "agent-lyric":       return <AgentPage agentId="lyric"    setActiveTab={navTo} orgId={orgId} role={role} />;
       case "agent-muse":        return <AgentPage agentId="muse"     setActiveTab={navTo} orgId={orgId} role={role} />;
       case "agent-allegra":     return <AgentPage agentId="allegra"  setActiveTab={navTo} orgId={orgId} role={role} />;
-      case "lyric-workstation": return <LyricWorkstation orgId={orgId} />;
+      case "lyric-workstation": return <LyricWorkstation orgId={lyricOrgOverride || orgId} />;
       case "client-profile":    return <ClientProfile role={role} orgId={orgId} />;
-      case "onboarding":        return <Onboarding role={role} orgId={orgId} />;
+      case "onboarding":        return <Onboarding role={role} orgId={orgId} onLyricStart={startLyricWorkstation} />;
       case "onboarding-hub":    return <OnboardingHub setActiveTab={navTo} />;
       case "calendar":          return <CalendarView />;
       case "tasks":             return <Tasks />;
